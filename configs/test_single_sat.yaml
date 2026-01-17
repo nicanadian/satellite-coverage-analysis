@@ -1,0 +1,86 @@
+# Single Satellite Test Configuration
+# Purpose: Edge case testing with minimal constellation
+
+start_date: "2025-11-01"
+duration_days: 3
+time_step_s: 10.0
+
+# Single satellite - SSO
+satellites:
+  - sat_id: 1
+    inclination_deg: 97.4
+    altitude_km: 350
+    raan_deg: 0
+
+# Standard ground station network
+ground_stations:
+  - name: Svalbard
+    lat: 78.2
+    lon: 15.4
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: KSAT
+    downlink_rate_mbps: 1200
+  - name: Alaska
+    lat: 64.8
+    lon: -147.7
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: KSAT
+    downlink_rate_mbps: 1000
+  - name: Chile
+    lat: -33.1
+    lon: -70.7
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: KSAT
+    downlink_rate_mbps: 800
+
+imaging_modes:
+  - name: "Panchromatic"
+    fov_half_angle_deg: 2.5
+    collect_dwell_time_s: 5.0
+    collection_rate_gbps: 2.0
+    processing_time_min: 30.0
+    off_nadir_min_deg: 0.0
+    off_nadir_max_deg: 30.0
+  - name: "Multispectral"
+    fov_half_angle_deg: 3.5
+    collect_dwell_time_s: 8.0
+    collection_rate_gbps: 1.5
+    processing_time_min: 45.0
+    off_nadir_min_deg: 0.0
+    off_nadir_max_deg: 25.0
+
+targets:
+  target_points:
+    - [35.7, 139.7]   # Tokyo
+    - [51.5, -0.1]    # London
+    - [40.7, -74.0]   # New York
+    - [-33.9, 151.2]  # Sydney
+    - [28.6, 77.2]    # Delhi
+  use_grid: false
+
+slew_rate_deg_per_s: 1.0
+mode_switch_time_s: 30.0
+contact_buffer_s: 30.0
+min_access_duration_s: 30.0
+access_merge_buffer_s: 240.0
+ttnc_max_search_hours: 3.0
+
+output_dir: "results/test_single_sat"
+excel_filename: "results_summary.xlsx"
+ppt_filename: "results_summary.pptx"
+plots_subdir: "plots"
+
+plot_dpi: 300
+plot_figsize: [15, 10]
+land_color: "#fafaf9"
+ocean_color: "#d4dbdc"
+border_color: "#ebd6d9"

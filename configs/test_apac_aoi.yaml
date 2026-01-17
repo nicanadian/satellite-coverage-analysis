@@ -1,0 +1,89 @@
+# North APAC AOI Test Configuration
+# Purpose: Regional coverage testing over Japan, Korea, China, Taiwan
+
+start_date: "2025-11-01"
+duration_days: 3
+time_step_s: 10.0
+
+satellites:
+  - sat_id: 1
+    inclination_deg: 97.4
+    altitude_km: 350
+    raan_deg: 0
+  - sat_id: 2
+    inclination_deg: 97.4
+    altitude_km: 350
+    raan_deg: 120
+  - sat_id: 3
+    inclination_deg: 53.0
+    altitude_km: 400
+    raan_deg: 60
+
+# APAC ground stations
+ground_stations:
+  - name: Tokyo
+    lat: 35.68
+    lon: 139.69
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: ATLAS
+    downlink_rate_mbps: 1200
+  - name: Singapore
+    lat: 1.35
+    lon: 103.82
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: AWS
+    downlink_rate_mbps: 1000
+
+imaging_modes:
+  - name: "Panchromatic"
+    fov_half_angle_deg: 2.5
+    collect_dwell_time_s: 5.0
+    collection_rate_gbps: 2.0
+    processing_time_min: 30.0
+    off_nadir_min_deg: 0.0
+    off_nadir_max_deg: 30.0
+  - name: "Multispectral"
+    fov_half_angle_deg: 3.5
+    collect_dwell_time_s: 8.0
+    collection_rate_gbps: 1.5
+    processing_time_min: 45.0
+    off_nadir_min_deg: 0.0
+    off_nadir_max_deg: 25.0
+
+targets:
+  target_points:
+    - [35.7, 139.7]   # Tokyo
+    - [37.6, 127.0]   # Seoul
+    - [39.9, 116.4]   # Beijing
+    - [31.2, 121.5]   # Shanghai
+    - [25.0, 121.5]   # Taipei
+    - [34.7, 135.5]   # Osaka
+    - [22.3, 114.2]   # Hong Kong
+    - [22.5, 114.1]   # Shenzhen
+    - [35.2, 129.0]   # Busan
+    - [32.1, 118.8]   # Nanjing
+  use_grid: false
+
+slew_rate_deg_per_s: 1.0
+mode_switch_time_s: 30.0
+contact_buffer_s: 30.0
+min_access_duration_s: 30.0
+access_merge_buffer_s: 240.0
+ttnc_max_search_hours: 3.0
+
+output_dir: "results/test_apac"
+excel_filename: "results_summary.xlsx"
+ppt_filename: "results_summary.pptx"
+plots_subdir: "plots"
+
+plot_dpi: 300
+plot_figsize: [15, 10]
+land_color: "#fafaf9"
+ocean_color: "#d4dbdc"
+border_color: "#ebd6d9"

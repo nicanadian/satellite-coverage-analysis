@@ -1,0 +1,89 @@
+# Europe AOI Test Configuration
+# Purpose: Regional coverage testing over Europe
+
+start_date: "2025-11-01"
+duration_days: 3
+time_step_s: 10.0
+
+satellites:
+  - sat_id: 1
+    inclination_deg: 97.4
+    altitude_km: 350
+    raan_deg: 0
+  - sat_id: 2
+    inclination_deg: 97.4
+    altitude_km: 350
+    raan_deg: 120
+  - sat_id: 3
+    inclination_deg: 53.0
+    altitude_km: 400
+    raan_deg: 60
+
+# European ground stations
+ground_stations:
+  - name: Svalbard
+    lat: 78.2
+    lon: 15.4
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: KSAT
+    downlink_rate_mbps: 1200
+  - name: Tromso
+    lat: 69.65
+    lon: 18.96
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: KSAT
+    downlink_rate_mbps: 1000
+
+imaging_modes:
+  - name: "Panchromatic"
+    fov_half_angle_deg: 2.5
+    collect_dwell_time_s: 5.0
+    collection_rate_gbps: 2.0
+    processing_time_min: 30.0
+    off_nadir_min_deg: 0.0
+    off_nadir_max_deg: 30.0
+  - name: "Multispectral"
+    fov_half_angle_deg: 3.5
+    collect_dwell_time_s: 8.0
+    collection_rate_gbps: 1.5
+    processing_time_min: 45.0
+    off_nadir_min_deg: 0.0
+    off_nadir_max_deg: 25.0
+
+targets:
+  target_points:
+    - [51.5, -0.1]    # London
+    - [48.9, 2.3]     # Paris
+    - [52.5, 13.4]    # Berlin
+    - [41.9, 12.5]    # Rome
+    - [40.4, -3.7]    # Madrid
+    - [52.4, 4.9]     # Amsterdam
+    - [48.2, 16.4]    # Vienna
+    - [52.2, 21.0]    # Warsaw
+    - [59.3, 18.1]    # Stockholm
+    - [37.9, 23.7]    # Athens
+  use_grid: false
+
+slew_rate_deg_per_s: 1.0
+mode_switch_time_s: 30.0
+contact_buffer_s: 30.0
+min_access_duration_s: 30.0
+access_merge_buffer_s: 240.0
+ttnc_max_search_hours: 3.0
+
+output_dir: "results/test_europe"
+excel_filename: "results_summary.xlsx"
+ppt_filename: "results_summary.pptx"
+plots_subdir: "plots"
+
+plot_dpi: 300
+plot_figsize: [15, 10]
+land_color: "#fafaf9"
+ocean_color: "#d4dbdc"
+border_color: "#ebd6d9"
