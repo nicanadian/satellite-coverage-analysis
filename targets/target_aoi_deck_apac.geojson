@@ -1,0 +1,56 @@
+{
+  "type": "FeatureCollection",
+  "name": "North APAC Major Cities",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"name": "Tokyo", "country": "Japan"},
+      "geometry": {"type": "Point", "coordinates": [139.7, 35.7]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Seoul", "country": "South Korea"},
+      "geometry": {"type": "Point", "coordinates": [127.0, 37.6]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Beijing", "country": "China"},
+      "geometry": {"type": "Point", "coordinates": [116.4, 39.9]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Shanghai", "country": "China"},
+      "geometry": {"type": "Point", "coordinates": [121.5, 31.2]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Taipei", "country": "Taiwan"},
+      "geometry": {"type": "Point", "coordinates": [121.5, 25.0]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Osaka", "country": "Japan"},
+      "geometry": {"type": "Point", "coordinates": [135.5, 34.7]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Hong Kong", "country": "China"},
+      "geometry": {"type": "Point", "coordinates": [114.2, 22.3]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Shenzhen", "country": "China"},
+      "geometry": {"type": "Point", "coordinates": [114.1, 22.5]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Busan", "country": "South Korea"},
+      "geometry": {"type": "Point", "coordinates": [129.0, 35.2]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Nanjing", "country": "China"},
+      "geometry": {"type": "Point", "coordinates": [118.8, 32.1]}
+    }
+  ]
+}

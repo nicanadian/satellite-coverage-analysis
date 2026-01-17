@@ -1,0 +1,56 @@
+{
+  "type": "FeatureCollection",
+  "name": "European Major Cities",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"name": "London", "country": "United Kingdom"},
+      "geometry": {"type": "Point", "coordinates": [-0.1, 51.5]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Paris", "country": "France"},
+      "geometry": {"type": "Point", "coordinates": [2.3, 48.9]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Berlin", "country": "Germany"},
+      "geometry": {"type": "Point", "coordinates": [13.4, 52.5]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Rome", "country": "Italy"},
+      "geometry": {"type": "Point", "coordinates": [12.5, 41.9]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Madrid", "country": "Spain"},
+      "geometry": {"type": "Point", "coordinates": [-3.7, 40.4]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Amsterdam", "country": "Netherlands"},
+      "geometry": {"type": "Point", "coordinates": [4.9, 52.4]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Vienna", "country": "Austria"},
+      "geometry": {"type": "Point", "coordinates": [16.4, 48.2]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Warsaw", "country": "Poland"},
+      "geometry": {"type": "Point", "coordinates": [21.0, 52.2]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Stockholm", "country": "Sweden"},
+      "geometry": {"type": "Point", "coordinates": [18.1, 59.3]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Athens", "country": "Greece"},
+      "geometry": {"type": "Point", "coordinates": [23.7, 37.9]}
+    }
+  ]
+}

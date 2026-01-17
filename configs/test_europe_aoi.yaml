@@ -57,17 +57,7 @@ imaging_modes:
     off_nadir_max_deg: 25.0
 
 targets:
-  target_points:
-    - [51.5, -0.1]    # London
-    - [48.9, 2.3]     # Paris
-    - [52.5, 13.4]    # Berlin
-    - [41.9, 12.5]    # Rome
-    - [40.4, -3.7]    # Madrid
-    - [52.4, 4.9]     # Amsterdam
-    - [48.2, 16.4]    # Vienna
-    - [52.2, 21.0]    # Warsaw
-    - [59.3, 18.1]    # Stockholm
-    - [37.9, 23.7]    # Athens
+  geojson_path: "targets/target_aoi_deck_europe.geojson"
   use_grid: false
 
 slew_rate_deg_per_s: 1.0

@@ -57,17 +57,7 @@ imaging_modes:
     off_nadir_max_deg: 25.0
 
 targets:
-  target_points:
-    - [35.7, 139.7]   # Tokyo
-    - [37.6, 127.0]   # Seoul
-    - [39.9, 116.4]   # Beijing
-    - [31.2, 121.5]   # Shanghai
-    - [25.0, 121.5]   # Taipei
-    - [34.7, 135.5]   # Osaka
-    - [22.3, 114.2]   # Hong Kong
-    - [22.5, 114.1]   # Shenzhen
-    - [35.2, 129.0]   # Busan
-    - [32.1, 118.8]   # Nanjing
+  geojson_path: "targets/target_aoi_deck_apac.geojson"
   use_grid: false
 
 slew_rate_deg_per_s: 1.0

@@ -1,0 +1,46 @@
+{
+  "type": "FeatureCollection",
+  "name": "Middle East Major Cities",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"name": "Dubai", "country": "United Arab Emirates"},
+      "geometry": {"type": "Point", "coordinates": [55.3, 25.2]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Riyadh", "country": "Saudi Arabia"},
+      "geometry": {"type": "Point", "coordinates": [46.7, 24.7]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Tel Aviv", "country": "Israel"},
+      "geometry": {"type": "Point", "coordinates": [34.8, 32.1]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Cairo", "country": "Egypt"},
+      "geometry": {"type": "Point", "coordinates": [31.2, 30.0]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Doha", "country": "Qatar"},
+      "geometry": {"type": "Point", "coordinates": [51.5, 25.3]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Abu Dhabi", "country": "United Arab Emirates"},
+      "geometry": {"type": "Point", "coordinates": [54.4, 24.5]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Amman", "country": "Jordan"},
+      "geometry": {"type": "Point", "coordinates": [35.9, 31.9]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Kuwait City", "country": "Kuwait"},
+      "geometry": {"type": "Point", "coordinates": [47.9, 29.4]}
+    }
+  ]
+}

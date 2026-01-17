@@ -1,0 +1,31 @@
+{
+  "type": "FeatureCollection",
+  "name": "Global Major Cities",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"name": "Tokyo", "country": "Japan", "region": "APAC"},
+      "geometry": {"type": "Point", "coordinates": [139.7, 35.7]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "London", "country": "United Kingdom", "region": "Europe"},
+      "geometry": {"type": "Point", "coordinates": [-0.1, 51.5]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "New York", "country": "United States", "region": "North America"},
+      "geometry": {"type": "Point", "coordinates": [-74.0, 40.7]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Sydney", "country": "Australia", "region": "APAC"},
+      "geometry": {"type": "Point", "coordinates": [151.2, -33.9]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Delhi", "country": "India", "region": "South Asia"},
+      "geometry": {"type": "Point", "coordinates": [77.2, 28.6]}
+    }
+  ]
+}
