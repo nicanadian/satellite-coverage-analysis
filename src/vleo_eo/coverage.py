@@ -294,6 +294,7 @@ def calculate_access_windows(
     off_nadir_min_deg: float = 0.0,
     off_nadir_max_deg: float = 45.0,
     min_access_duration_s: float = 45.0,
+    pass_type: str = "both",
 ) -> pd.DataFrame:
     """
     Calculate target access windows from orbit data.
@@ -310,6 +311,9 @@ def calculate_access_windows(
         Maximum off-nadir angle in degrees.
     min_access_duration_s : float
         Minimum access duration to keep in seconds.
+    pass_type : str
+        Filter by pass type: "ascending" (northbound), "descending" (southbound), or "both".
+        For LTDN-defined orbits, imaging typically occurs on descending passes.
 
     Returns
     -------
@@ -371,15 +375,22 @@ def calculate_access_windows(
         overpass_agg = filtered_df.groupby(['Satellite', 'Overpass']).agg({
             'Epoch': ['min', 'max'],
             'off_nadir_angle': ['min', 'max'],
-            'Latitude': 'first',
+            'Latitude': ['first', 'last'],
             'Longitude': 'first',
             'Altitude_km': 'mean',
         }).reset_index()
 
         overpass_agg.columns = [
             'Satellite', 'Overpass', 'Start_Time', 'End_Time',
-            'OffNadir_Min', 'OffNadir_Max', 'Sat_Lat', 'Sat_Lon', 'Altitude_km'
+            'OffNadir_Min', 'OffNadir_Max', 'Sat_Lat_Start', 'Sat_Lat_End', 'Sat_Lon', 'Altitude_km'
         ]
+
+        # Determine pass direction: descending = latitude decreasing (moving south)
+        overpass_agg['Lat_Change'] = overpass_agg['Sat_Lat_End'] - overpass_agg['Sat_Lat_Start']
+        overpass_agg['Pass_Direction'] = np.where(
+            overpass_agg['Lat_Change'] < 0, 'descending', 'ascending'
+        )
+        overpass_agg['Sat_Lat'] = overpass_agg['Sat_Lat_Start']  # Use start lat for compatibility
 
         overpass_agg['AOI_Lat'] = target_lat
         overpass_agg['AOI_Lon'] = target_lon
@@ -389,6 +400,16 @@ def calculate_access_windows(
 
         # Filter by minimum duration
         overpass_agg = overpass_agg[overpass_agg['Access_Duration'] >= min_access_duration_s]
+
+        # Filter by pass type if specified
+        if pass_type == "descending":
+            overpass_agg = overpass_agg[overpass_agg['Pass_Direction'] == 'descending']
+        elif pass_type == "ascending":
+            overpass_agg = overpass_agg[overpass_agg['Pass_Direction'] == 'ascending']
+        # else "both" - keep all passes
+
+        # Drop helper columns
+        overpass_agg = overpass_agg.drop(columns=['Sat_Lat_Start', 'Sat_Lat_End', 'Lat_Change'])
 
         access_times.append(overpass_agg)
 

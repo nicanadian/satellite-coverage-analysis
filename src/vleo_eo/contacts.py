@@ -20,6 +20,62 @@ from .orbits import TLEData
 from .config import GroundStationConfig, ImagingModeConfig
 
 
+def calculate_ground_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """
+    Calculate great circle distance between two points using Haversine formula.
+
+    Parameters
+    ----------
+    lat1, lon1 : float
+        First point coordinates in degrees.
+    lat2, lon2 : float
+        Second point coordinates in degrees.
+
+    Returns
+    -------
+    float
+        Distance in kilometers.
+    """
+    R = 6371.0  # Earth radius in km
+
+    lat1_rad = np.radians(lat1)
+    lat2_rad = np.radians(lat2)
+    dlat = np.radians(lat2 - lat1)
+    dlon = np.radians(lon2 - lon1)
+
+    a = np.sin(dlat / 2)**2 + np.cos(lat1_rad) * np.cos(lat2_rad) * np.sin(dlon / 2)**2
+    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+
+    return R * c
+
+
+def calculate_comm_range_km(min_elevation_deg: float, sat_altitude_km: float) -> float:
+    """
+    Calculate maximum ground range for communication given elevation and altitude.
+
+    Parameters
+    ----------
+    min_elevation_deg : float
+        Minimum elevation angle in degrees.
+    sat_altitude_km : float
+        Satellite altitude in km.
+
+    Returns
+    -------
+    float
+        Maximum ground range in km.
+    """
+    earth_radius_km = 6378.137
+    elevation_rad = np.radians(min_elevation_deg)
+
+    # Central angle calculation
+    central_angle = np.arccos(
+        earth_radius_km * np.cos(elevation_rad) / (earth_radius_km + sat_altitude_km)
+    ) - elevation_rad
+
+    return earth_radius_km * central_angle
+
+
 def create_communication_cone(
     lon: float,
     lat: float,
@@ -91,9 +147,14 @@ def find_next_contact(
     comm_cone: Polygon,
     max_search_time: timedelta = timedelta(hours=3),
     time_step_s: float = 15.0,
+    gs_lat: float = None,
+    gs_lon: float = None,
+    min_elevation_deg: float = 5.0,
 ) -> Tuple[Optional[pd.Timestamp], Optional[pd.Timestamp]]:
     """
     Find the next ground station contact window for a satellite.
+
+    Uses distance-based validation to avoid polygon containment errors.
 
     Parameters
     ----------
@@ -104,11 +165,17 @@ def find_next_contact(
     start_time : datetime
         Start time to search from (must be timezone-aware).
     comm_cone : Polygon
-        Communication cone geometry.
+        Communication cone geometry (used as fallback).
     max_search_time : timedelta
         Maximum time to search for contact.
     time_step_s : float
         Time step for searching in seconds.
+    gs_lat : float, optional
+        Ground station latitude (required for distance-based validation).
+    gs_lon : float, optional
+        Ground station longitude (required for distance-based validation).
+    min_elevation_deg : float
+        Minimum elevation angle for contact.
 
     Returns
     -------
@@ -146,11 +213,23 @@ def find_next_contact(
     lats = subpoints.latitude.degrees
     lons = subpoints.longitude.degrees
 
-    # Check which points are in the comm cone
-    prepared_cone = prep(comm_cone)
-    coords = np.column_stack((lons, lats)).astype(np.float64)
-    points = [Point(x, y) for x, y in coords]
-    in_range = np.array([prepared_cone.contains(point) for point in points])
+    # Use distance-based validation if ground station coordinates provided
+    if gs_lat is not None and gs_lon is not None:
+        # Calculate max comm range based on satellite altitude and min elevation
+        sat_alt_km = tle.altitude_km
+        max_range_km = calculate_comm_range_km(min_elevation_deg, sat_alt_km)
+
+        # Calculate distance from each satellite position to ground station
+        in_range = np.zeros(len(lats), dtype=bool)
+        for i in range(len(lats)):
+            dist_km = calculate_ground_distance_km(lats[i], lons[i], gs_lat, gs_lon)
+            in_range[i] = dist_km <= max_range_km
+    else:
+        # Fallback to polygon containment (less reliable)
+        prepared_cone = prep(comm_cone)
+        coords = np.column_stack((lons, lats)).astype(np.float64)
+        points = [Point(x, y) for x, y in coords]
+        in_range = np.array([prepared_cone.contains(point) for point in points])
 
     # Find contact periods
     contacts = []
@@ -227,15 +306,15 @@ def calculate_raw_contact_windows(
         lons = subpoints.longitude.degrees
 
         for gs in ground_stations:
-            # Create communication cone
-            sat_alt_m = tle.altitude_km * 1000
-            cone = create_communication_cone(gs.lon, gs.lat, gs.min_elevation_deg, sat_alt_m)
-            prepared_cone = prep(cone)
+            # Use distance-based validation for accurate contact detection
+            sat_alt_km = tle.altitude_km
+            max_range_km = calculate_comm_range_km(gs.min_elevation_deg, sat_alt_km)
 
-            # Check which points are in the comm cone
-            coords = np.column_stack((lons, lats)).astype(np.float64)
-            points = [Point(x, y) for x, y in coords]
-            in_range = np.array([prepared_cone.contains(point) for point in points])
+            # Calculate distance from each satellite position to ground station
+            in_range = np.zeros(len(lats), dtype=bool)
+            for i in range(len(lats)):
+                dist_km = calculate_ground_distance_km(lats[i], lons[i], gs.lat, gs.lon)
+                in_range[i] = dist_km <= max_range_km
 
             # Find contact periods
             in_contact = False
@@ -469,6 +548,9 @@ def calculate_contact_windows(
                         tle_data, sat_id, slew_stop_dt,
                         comm_cones[cone_key],
                         max_search_time=timedelta(hours=ttnc_max_search_hours),
+                        gs_lat=gs.lat,
+                        gs_lon=gs.lon,
+                        min_elevation_deg=gs.min_elevation_deg,
                     )
 
                     if contact_start is not None:
@@ -483,14 +565,15 @@ def calculate_contact_windows(
 
         # Validate contacts
         for gs in ground_stations:
-            downlink_stop = pd.to_datetime(df['Downlink_Stop'])
-            contact_end = pd.to_datetime(df[f'Next_{gs.name}_Contact_End'])
+            downlink_stop = pd.to_datetime(df['Downlink_Stop'], utc=True)
+            contact_end = pd.to_datetime(df[f'Next_{gs.name}_Contact_End'], utc=True)
 
             valid_rows = downlink_stop.notna() & contact_end.notna()
             df[f'Valid_Contact_{gs.name}'] = False
-            df.loc[valid_rows, f'Valid_Contact_{gs.name}'] = (
-                downlink_stop[valid_rows] < contact_end[valid_rows]
-            )
+            if valid_rows.any():
+                df.loc[valid_rows, f'Valid_Contact_{gs.name}'] = (
+                    downlink_stop[valid_rows] < contact_end[valid_rows]
+                )
 
         # Calculate total valid contacts
         valid_cols = [col for col in df.columns if col.startswith('Valid_Contact_')]

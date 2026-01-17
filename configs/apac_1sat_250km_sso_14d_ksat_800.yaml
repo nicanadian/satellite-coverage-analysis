@@ -1,0 +1,201 @@
+# APAC Single Satellite Configuration - All KSAT Stations
+# Static image sizes: Nominal 6GB, Calibration 40GB
+# Ka downlink: 800 Mbps
+
+start_date: "2027-02-15"
+duration_days: 14
+time_step_s: 10.0
+
+orbit:
+  ltdn_hours: 10.5
+  auto_sso: true
+
+satellites:
+  - sat_id: 1
+    inclination_deg: 96.5
+    altitude_km: 250
+    raan_deg: 0
+
+# Full KSAT ground station network - Ka at 800 Mbps
+ground_stations:
+  - name: KSAT-Svalbard-SvalSat
+    lat: 78.23
+    lon: 15.41
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: KSAT
+    downlink_rate_mbps: 800
+  - name: KSAT-Troll-Antarctica
+    lat: -72.01
+    lon: 2.53
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: KSAT
+    downlink_rate_mbps: 800
+  - name: KSAT-Inuvik-Canada
+    lat: 68.36
+    lon: -133.72
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+    downlink_rate_mbps: 800
+  - name: KSAT-Puertollano-Spain
+    lat: 38.68
+    lon: -4.11
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: KSAT
+    downlink_rate_mbps: 800
+  - name: KSAT-Fairbanks-AK
+    lat: 64.98
+    lon: -147.51
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: KSAT
+    downlink_rate_mbps: 800
+  - name: KSAT-Miami-FL
+    lat: 25.79
+    lon: -80.29
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+    downlink_rate_mbps: 800
+  - name: KSAT-Punta-Arenas-CL
+    lat: -53.16
+    lon: -70.91
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: KSAT
+    downlink_rate_mbps: 800
+  - name: KSAT-Tromso-Norway
+    lat: 69.65
+    lon: 18.96
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: KSAT
+    downlink_rate_mbps: 800
+  - name: KSAT-Athens-Greece
+    lat: 38.05
+    lon: 23.86
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+    downlink_rate_mbps: 800
+  - name: KSAT-Grimstad-Norway
+    lat: 58.34
+    lon: 8.59
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+    downlink_rate_mbps: 800
+  - name: KSAT-Singapore
+    lat: 1.35
+    lon: 103.82
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+    downlink_rate_mbps: 800
+  - name: KSAT-Dubai-UAE
+    lat: 25.08
+    lon: 55.31
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+    downlink_rate_mbps: 800
+  - name: KSAT-Mauritius
+    lat: -20.17
+    lon: 57.5
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+    downlink_rate_mbps: 800
+  - name: KSAT-Awarua-NZ
+    lat: -46.53
+    lon: 168.37
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+    downlink_rate_mbps: 800
+  - name: KSAT-Hartebeesthoek-ZA
+    lat: -25.89
+    lon: 27.69
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+    downlink_rate_mbps: 800
+
+# Static image file sizes (Nominal only - 6 GB)
+imaging_modes:
+  - name: "Nominal"
+    fov_half_angle_deg: 2.5
+    collect_dwell_time_s: 1.0        # Minimal dwell (not used for size calc)
+    collection_rate_gbps: 48.0       # 6 GB / 1s = 48 Gbps effective rate
+    processing_time_min: 30.0
+    off_nadir_min_deg: 0.0
+    off_nadir_max_deg: 30.0
+
+targets:
+  geojson_path: "targets/target_aoi_deck_apac.geojson"
+  use_grid: false
+
+slew_rate_deg_per_s: 1.0
+mode_switch_time_s: 30.0
+contact_buffer_s: 30.0
+min_access_duration_s: 30.0
+access_merge_buffer_s: 240.0
+ttnc_max_search_hours: 3.0
+
+output_dir: "results/apac_1sat_250km_ksat_800mbps"
+excel_filename: "apac_1sat_250km_ksat_800mbps.xlsx"
+ppt_filename: "apac_1sat_250km_ksat_800mbps.pptx"
+plots_subdir: "plots"
+
+plot_dpi: 300
+plot_figsize: [15, 10]
+land_color: "#fafaf9"
+ocean_color: "#d4dbdc"
+border_color: "#ebd6d9"
+
+optimization:
+  enabled: false
+
+propulsion:
+  enabled: true
+  spacecraft:
+    dry_mass_kg: 500
+    cross_section_m2: 2.0
+    drag_coefficient: 2.2
+  thruster_preset: "BHT-600"
+  atmosphere:
+    solar_activity_f107: 150
+  margin_factor: 1.5

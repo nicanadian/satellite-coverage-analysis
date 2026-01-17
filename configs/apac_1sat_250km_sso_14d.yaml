@@ -1,0 +1,118 @@
+# APAC Single Satellite Configuration
+# 1 satellite, 250km SSO, 14-day analysis with optimization
+# Epoch: 2027-02-15, LTDN: 10:30 AM
+
+start_date: "2027-02-15"
+duration_days: 14
+time_step_s: 10.0
+
+# Orbit parameters
+orbit:
+  ltdn_hours: 10.5  # 10:30 AM Local Time of Descending Node
+  auto_sso: true    # Auto-calculate SSO inclination and RAAN from LTDN
+
+# Single satellite - SSO at 250km
+# Note: inclination and raan will be overridden if auto_sso is true
+satellites:
+  - sat_id: 1
+    inclination_deg: 96.5  # Will be recalculated for SSO
+    altitude_km: 250
+    raan_deg: 0            # Will be calculated from LTDN
+
+# Hall Effect Thruster station-keeping configuration
+propulsion:
+  enabled: true
+
+  # Spacecraft properties
+  spacecraft:
+    dry_mass_kg: 500
+    cross_section_m2: 2.0
+    drag_coefficient: 2.2
+
+  # Thruster selection (preset name or 'custom')
+  # Available presets: BHT-200, SPT-50, BHT-600, PPS-1350, SPT-100, AEPS
+  thruster_preset: "BHT-600"
+
+  # Custom thruster config (used if thruster_preset is 'custom')
+  custom_thruster:
+    name: "Custom HET"
+    thrust_mN: 50.0
+    isp_s: 1500
+    power_W: 1000
+    propellant: "Xenon"
+    efficiency: 0.55
+
+  # Atmospheric model
+  atmosphere:
+    solar_activity_f107: 150  # Low: 70, Moderate: 150, High: 250
+
+  # Analysis settings
+  margin_factor: 1.5  # Safety margin for delta-V and propellant
+
+# APAC ground stations for baseline analysis
+ground_stations:
+  - name: Tokyo
+    lat: 35.68
+    lon: 139.69
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: ATLAS
+    downlink_rate_mbps: 1200
+  - name: Singapore
+    lat: 1.35
+    lon: 103.82
+    min_elevation_deg: 5.0
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: AWS
+    downlink_rate_mbps: 1000
+
+imaging_modes:
+  - name: "Panchromatic"
+    fov_half_angle_deg: 2.5
+    collect_dwell_time_s: 5.0
+    collection_rate_gbps: 2.0
+    processing_time_min: 30.0
+    off_nadir_min_deg: 0.0
+    off_nadir_max_deg: 30.0
+  - name: "Multispectral"
+    fov_half_angle_deg: 3.5
+    collect_dwell_time_s: 8.0
+    collection_rate_gbps: 1.5
+    processing_time_min: 45.0
+    off_nadir_min_deg: 0.0
+    off_nadir_max_deg: 25.0
+
+targets:
+  geojson_path: "targets/target_aoi_deck_apac.geojson"
+  use_grid: false
+
+slew_rate_deg_per_s: 1.0
+mode_switch_time_s: 30.0
+contact_buffer_s: 30.0
+min_access_duration_s: 30.0
+access_merge_buffer_s: 240.0
+ttnc_max_search_hours: 3.0
+
+output_dir: "results/apac_1sat_250km_sso_14d"
+excel_filename: "results_summary.xlsx"
+ppt_filename: "results_summary.pptx"
+plots_subdir: "plots"
+
+plot_dpi: 300
+plot_figsize: [15, 10]
+land_color: "#fafaf9"
+ocean_color: "#d4dbdc"
+border_color: "#ebd6d9"
+
+# RGT-Min Optimization settings
+optimization:
+  enabled: true
+  approach: greedy  # Fast/rough optimization
+  ttc_contacts_per_rev: 1
+  ka_delivery_percent: 95.0
+  ka_delivery_hours: 4.0
+  providers: []  # All providers

@@ -51,6 +51,7 @@ def generate_excel_report(
     downlink_kpis: Dict[str, Any],
     output_path: Optional[Path] = None,
     optimization_results: Optional[Dict[str, Any]] = None,
+    propulsion_df: Optional[pd.DataFrame] = None,
 ) -> Path:
     """
     Generate Excel report with all analysis results.
@@ -296,6 +297,10 @@ def generate_excel_report(
                     })
             if opt_details:
                 pd.DataFrame(opt_details).to_excel(writer, sheet_name='Optimization_Stations', index=False)
+
+        # Sheet 9: Propulsion/Station-Keeping Analysis (if available)
+        if propulsion_df is not None and not propulsion_df.empty:
+            propulsion_df.to_excel(writer, sheet_name='Propulsion_Analysis', index=False)
 
     print(f"Excel report saved to: {output_path}")
     return output_path

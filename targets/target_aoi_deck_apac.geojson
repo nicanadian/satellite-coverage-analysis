@@ -1,56 +1,34 @@
 {
   "type": "FeatureCollection",
-  "name": "North APAC Major Cities",
+  "name": "APAC Target Deck",
   "features": [
-    {
-      "type": "Feature",
-      "properties": {"name": "Tokyo", "country": "Japan"},
-      "geometry": {"type": "Point", "coordinates": [139.7, 35.7]}
-    },
-    {
-      "type": "Feature",
-      "properties": {"name": "Seoul", "country": "South Korea"},
-      "geometry": {"type": "Point", "coordinates": [127.0, 37.6]}
-    },
-    {
-      "type": "Feature",
-      "properties": {"name": "Beijing", "country": "China"},
-      "geometry": {"type": "Point", "coordinates": [116.4, 39.9]}
-    },
-    {
-      "type": "Feature",
-      "properties": {"name": "Shanghai", "country": "China"},
-      "geometry": {"type": "Point", "coordinates": [121.5, 31.2]}
-    },
-    {
-      "type": "Feature",
-      "properties": {"name": "Taipei", "country": "Taiwan"},
-      "geometry": {"type": "Point", "coordinates": [121.5, 25.0]}
-    },
-    {
-      "type": "Feature",
-      "properties": {"name": "Osaka", "country": "Japan"},
-      "geometry": {"type": "Point", "coordinates": [135.5, 34.7]}
-    },
-    {
-      "type": "Feature",
-      "properties": {"name": "Hong Kong", "country": "China"},
-      "geometry": {"type": "Point", "coordinates": [114.2, 22.3]}
-    },
-    {
-      "type": "Feature",
-      "properties": {"name": "Shenzhen", "country": "China"},
-      "geometry": {"type": "Point", "coordinates": [114.1, 22.5]}
-    },
-    {
-      "type": "Feature",
-      "properties": {"name": "Busan", "country": "South Korea"},
-      "geometry": {"type": "Point", "coordinates": [129.0, 35.2]}
-    },
-    {
-      "type": "Feature",
-      "properties": {"name": "Nanjing", "country": "China"},
-      "geometry": {"type": "Point", "coordinates": [118.8, 32.1]}
-    }
+    {"type": "Feature", "properties": {"name": "Tokyo", "country": "Japan"}, "geometry": {"type": "Point", "coordinates": [139.7, 35.7]}},
+    {"type": "Feature", "properties": {"name": "Seoul", "country": "South Korea"}, "geometry": {"type": "Point", "coordinates": [127.0, 37.6]}},
+    {"type": "Feature", "properties": {"name": "Beijing", "country": "China"}, "geometry": {"type": "Point", "coordinates": [116.4, 39.9]}},
+    {"type": "Feature", "properties": {"name": "Shanghai", "country": "China"}, "geometry": {"type": "Point", "coordinates": [121.5, 31.2]}},
+    {"type": "Feature", "properties": {"name": "Taipei", "country": "Taiwan"}, "geometry": {"type": "Point", "coordinates": [121.5, 25.0]}},
+    {"type": "Feature", "properties": {"name": "Osaka", "country": "Japan"}, "geometry": {"type": "Point", "coordinates": [135.5, 34.7]}},
+    {"type": "Feature", "properties": {"name": "Hong Kong", "country": "China"}, "geometry": {"type": "Point", "coordinates": [114.2, 22.3]}},
+    {"type": "Feature", "properties": {"name": "Shenzhen", "country": "China"}, "geometry": {"type": "Point", "coordinates": [114.1, 22.5]}},
+    {"type": "Feature", "properties": {"name": "Busan", "country": "South Korea"}, "geometry": {"type": "Point", "coordinates": [129.0, 35.2]}},
+    {"type": "Feature", "properties": {"name": "Nanjing", "country": "China"}, "geometry": {"type": "Point", "coordinates": [118.8, 32.1]}},
+    {"type": "Feature", "properties": {"name": "Nagoya", "country": "Japan"}, "geometry": {"type": "Point", "coordinates": [136.9, 35.2]}},
+    {"type": "Feature", "properties": {"name": "Yokohama", "country": "Japan"}, "geometry": {"type": "Point", "coordinates": [139.6, 35.4]}},
+    {"type": "Feature", "properties": {"name": "Fukuoka", "country": "Japan"}, "geometry": {"type": "Point", "coordinates": [130.4, 33.6]}},
+    {"type": "Feature", "properties": {"name": "Sapporo", "country": "Japan"}, "geometry": {"type": "Point", "coordinates": [141.3, 43.1]}},
+    {"type": "Feature", "properties": {"name": "Incheon", "country": "South Korea"}, "geometry": {"type": "Point", "coordinates": [126.7, 37.5]}},
+    {"type": "Feature", "properties": {"name": "Daegu", "country": "South Korea"}, "geometry": {"type": "Point", "coordinates": [128.6, 35.9]}},
+    {"type": "Feature", "properties": {"name": "Guangzhou", "country": "China"}, "geometry": {"type": "Point", "coordinates": [113.3, 23.1]}},
+    {"type": "Feature", "properties": {"name": "Hangzhou", "country": "China"}, "geometry": {"type": "Point", "coordinates": [120.2, 30.3]}},
+    {"type": "Feature", "properties": {"name": "Wuhan", "country": "China"}, "geometry": {"type": "Point", "coordinates": [114.3, 30.6]}},
+    {"type": "Feature", "properties": {"name": "Xian", "country": "China"}, "geometry": {"type": "Point", "coordinates": [108.9, 34.3]}},
+    {"type": "Feature", "properties": {"name": "Tianjin", "country": "China"}, "geometry": {"type": "Point", "coordinates": [117.2, 39.1]}},
+    {"type": "Feature", "properties": {"name": "Qingdao", "country": "China"}, "geometry": {"type": "Point", "coordinates": [120.4, 36.1]}},
+    {"type": "Feature", "properties": {"name": "Dalian", "country": "China"}, "geometry": {"type": "Point", "coordinates": [121.6, 38.9]}},
+    {"type": "Feature", "properties": {"name": "Kaohsiung", "country": "Taiwan"}, "geometry": {"type": "Point", "coordinates": [120.3, 22.6]}},
+    {"type": "Feature", "properties": {"name": "Macau", "country": "China"}, "geometry": {"type": "Point", "coordinates": [113.5, 22.2]}},
+    {"type": "Feature", "properties": {"name": "Pyongyang", "country": "North Korea"}, "geometry": {"type": "Point", "coordinates": [125.8, 39.0]}},
+    {"type": "Feature", "properties": {"name": "Vladivostok", "country": "Russia"}, "geometry": {"type": "Point", "coordinates": [131.9, 43.1]}},
+    {"type": "Feature", "properties": {"name": "Manila", "country": "Philippines"}, "geometry": {"type": "Point", "coordinates": [121.0, 14.6]}}
   ]
 }

@@ -100,6 +100,12 @@ Examples:
     )
     from src.vleo_eo.reports import generate_excel_report, generate_ppt_report
     from src.vleo_eo.optimization import run_optimization, optimization_results_to_dataframe
+    from src.vleo_eo.propulsion import (
+        AtmosphericModel, SpacecraftConfig, HallThrusterConfig,
+        analyze_station_keeping, generate_propulsion_report,
+        print_station_keeping_summary, ltdn_to_raan, calculate_sso_inclination,
+        THRUSTER_PRESETS
+    )
 
     import matplotlib
     matplotlib.use('Agg')  # Non-interactive backend for CLI
@@ -130,6 +136,72 @@ Examples:
     print(f"Imaging modes: {len(config.imaging_modes)}")
 
     # =========================================================================
+    # Parse orbit configuration (LTDN, auto SSO)
+    # =========================================================================
+    orbit_config = config.raw_config.get('orbit', {})
+    ltdn_hours = orbit_config.get('ltdn_hours')
+    auto_sso = orbit_config.get('auto_sso', False)
+
+    # Calculate RAAN from LTDN and SSO inclination if enabled
+    satellite_overrides = {}
+    if auto_sso and ltdn_hours is not None:
+        print(f"\nOrbit Configuration:")
+        print(f"  LTDN: {ltdn_hours:.2f} hours ({int(ltdn_hours)}:{int((ltdn_hours % 1) * 60):02d} local time)")
+        print(f"  Auto SSO: enabled")
+
+        for sat in config.satellites:
+            # Calculate SSO inclination for this altitude
+            sso_inc = calculate_sso_inclination(sat.altitude_km)
+            # Calculate RAAN from LTDN
+            sso_raan = ltdn_to_raan(ltdn_hours, config.start_datetime)
+
+            satellite_overrides[sat.sat_id] = {
+                'inclination_deg': sso_inc,
+                'raan_deg': sso_raan,
+            }
+            print(f"  Satellite {sat.sat_id}: SSO inclination={sso_inc:.2f}°, RAAN={sso_raan:.2f}°")
+
+    # =========================================================================
+    # Parse propulsion configuration
+    # =========================================================================
+    propulsion_config = config.raw_config.get('propulsion', {})
+    propulsion_enabled = propulsion_config.get('enabled', False)
+    propulsion_result = None
+    spacecraft_config = None
+    thruster_config = None
+    atmosphere_config = None
+
+    if propulsion_enabled:
+        # Spacecraft config
+        sc_cfg = propulsion_config.get('spacecraft', {})
+        spacecraft_config = SpacecraftConfig(
+            mass_kg=sc_cfg.get('dry_mass_kg', 500),
+            cross_section_m2=sc_cfg.get('cross_section_m2', 2.0),
+            drag_coefficient=sc_cfg.get('drag_coefficient', 2.2),
+        )
+
+        # Thruster config
+        thruster_preset = propulsion_config.get('thruster_preset', 'BHT-600')
+        if thruster_preset.lower() == 'custom':
+            custom = propulsion_config.get('custom_thruster', {})
+            thruster_config = HallThrusterConfig(
+                name=custom.get('name', 'Custom HET'),
+                thrust_mN=custom.get('thrust_mN', 50.0),
+                isp_s=custom.get('isp_s', 1500),
+                power_W=custom.get('power_W', 1000),
+                propellant=custom.get('propellant', 'Xenon'),
+                efficiency=custom.get('efficiency', 0.55),
+            )
+        else:
+            thruster_config = THRUSTER_PRESETS.get(thruster_preset, THRUSTER_PRESETS['BHT-600'])
+
+        # Atmosphere config
+        atm_cfg = propulsion_config.get('atmosphere', {})
+        atmosphere_config = AtmosphericModel(
+            f107=atm_cfg.get('solar_activity_f107', 150),
+        )
+
+    # =========================================================================
     # Phase 1: Orbit Propagation
     # =========================================================================
     print("\n" + "-" * 60)
@@ -139,18 +211,25 @@ Examples:
     # Create TLE data
     tle_data = {}
     for sat in config.satellites:
+        # Apply SSO overrides if available
+        inc_deg = sat.inclination_deg
+        raan_deg = sat.raan_deg
+        if sat.sat_id in satellite_overrides:
+            inc_deg = satellite_overrides[sat.sat_id]['inclination_deg']
+            raan_deg = satellite_overrides[sat.sat_id]['raan_deg']
+
         tle = create_tle_data(
             sat_id=sat.sat_id,
-            inclination_deg=sat.inclination_deg,
+            inclination_deg=inc_deg,
             altitude_km=sat.altitude_km,
-            raan_deg=sat.raan_deg,
+            raan_deg=raan_deg,
             epoch=config.start_datetime,
             tle_line1=sat.tle_line1,
             tle_line2=sat.tle_line2,
         )
         tle_data[sat.sat_id] = tle
         if args.verbose:
-            print(f"  Satellite {sat.sat_id}: {sat.altitude_km} km, {sat.inclination_deg} deg")
+            print(f"  Satellite {sat.sat_id}: {sat.altitude_km} km, {inc_deg:.2f} deg inc, {raan_deg:.2f} deg RAAN")
 
     # Propagate orbits
     print("\nPropagating orbits...")
@@ -168,6 +247,42 @@ Examples:
         for error in prop_validation['errors']:
             print(f"  - {error}")
         sys.exit(1)
+
+    # =========================================================================
+    # Phase 1.5: Hall Effect Thruster Station-Keeping Analysis
+    # =========================================================================
+    propulsion_df = None
+
+    if propulsion_enabled and spacecraft_config and thruster_config:
+        print("\n" + "-" * 60)
+        print("Phase 1.5: Hall Effect Thruster Station-Keeping Analysis")
+        print("-" * 60)
+
+        # Use average altitude from satellites
+        avg_altitude = sum(s.altitude_km for s in config.satellites) / len(config.satellites)
+        margin_factor = propulsion_config.get('margin_factor', 1.5)
+
+        print(f"\nSpacecraft: {spacecraft_config.mass_kg} kg, {spacecraft_config.cross_section_m2} m² area")
+        print(f"Thruster: {thruster_config.name}")
+        print(f"Target Altitude: {avg_altitude:.0f} km")
+        print(f"Solar Activity (F10.7): {atmosphere_config.f107} SFU")
+
+        propulsion_result = analyze_station_keeping(
+            altitude_km=avg_altitude,
+            duration_days=config.duration_days,
+            spacecraft=spacecraft_config,
+            thruster=thruster_config,
+            atmosphere=atmosphere_config,
+            margin_factor=margin_factor,
+        )
+
+        # Generate propulsion report DataFrame
+        propulsion_df = generate_propulsion_report(
+            propulsion_result, spacecraft_config, thruster_config, atmosphere_config
+        )
+
+        # Print summary
+        print_station_keeping_summary(propulsion_result, thruster_config)
 
     # =========================================================================
     # Phase 2: Coverage/Access Calculation
@@ -202,12 +317,21 @@ Examples:
         off_nadir_min = 0.0
         off_nadir_max = 45.0
 
+    # Determine pass type filter based on LTDN
+    # For LTDN-defined SSO orbits, imaging occurs on descending passes (daytime)
+    if ltdn_hours is not None:
+        pass_type = "descending"
+        print(f"  Filtering for descending passes only (LTDN: {ltdn_hours:.1f}h)")
+    else:
+        pass_type = "both"
+
     access_df = calculate_access_windows(
         orbit_df,
         targets_gdf,
         off_nadir_min_deg=off_nadir_min,
         off_nadir_max_deg=off_nadir_max,
         min_access_duration_s=config.min_access_duration_s,
+        pass_type=pass_type,
     )
 
     if access_df.empty:
@@ -422,6 +546,7 @@ Examples:
             downlink_kpis,
             output_path=output_path / config.excel_filename,
             optimization_results=optimization_results,
+            propulsion_df=propulsion_df,
         )
 
     # Generate PowerPoint report
@@ -479,6 +604,15 @@ Examples:
         for provider, result in optimization_results.items():
             status = "MET" if (result.ttc_satisfied and result.ka_satisfied) else "NOT MET"
             print(f"  {provider}: {len(result.ttc_stations)} TT&C + {len(result.ka_stations)} Ka stations (SLA: {status})")
+
+    if propulsion_result:
+        print(f"\nStation-Keeping (HET):")
+        print(f"  Thruster: {thruster_config.name}")
+        print(f"  Delta-V Required: {propulsion_result.total_delta_v_m_s:.2f} m/s")
+        print(f"  Propellant ({thruster_config.propellant}): {propulsion_result.propellant_mass_kg:.2f} kg")
+        print(f"  Propellant (with margin): {propulsion_result.propellant_mass_kg * propulsion_result.margin_factor:.2f} kg")
+        print(f"  Firing Time: {propulsion_result.total_firing_time_hours:.1f} hours ({propulsion_result.duty_cycle_percent:.1f}% duty)")
+        print(f"  Annualized Propellant: {propulsion_result.propellant_per_year_kg:.1f} kg/year")
 
     print("\nDone!")
 
