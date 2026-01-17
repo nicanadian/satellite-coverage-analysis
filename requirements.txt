@@ -1,0 +1,27 @@
+# VLEO EO Coverage Analysis - Requirements
+# Install with: pip install -r requirements.txt
+
+# Core scientific computing
+numpy>=1.20.0
+pandas>=1.3.0
+geopandas>=0.10.0
+
+# Visualization
+matplotlib>=3.4.0
+cartopy>=0.20.0
+
+# Orbit propagation
+skyfield>=1.42
+
+# Geometry
+shapely>=1.8.0
+pyproj>=3.2.0
+
+# Configuration
+pyyaml>=6.0
+
+# Excel export
+openpyxl>=3.0.0
+
+# PowerPoint export (optional)
+python-pptx>=0.6.21
