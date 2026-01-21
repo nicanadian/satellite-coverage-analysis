@@ -26,7 +26,7 @@ downlink_rate_mbps: 800
 min_elevation_sx_deg: 5.0   # S-band and X-band
 min_elevation_ka_deg: 10.0  # Ka-band
 
-# ViaSat RTE + ATLAS ground station network (19 stations)
+# ViaSat RTE + ATLAS ground station network (20 stations)
 ground_stations:
   # North America
   - name: Barrow-AK
@@ -122,6 +122,13 @@ ground_stations:
     x_band: true
     ka_band: true
     provider: ATLAS
+  - name: Mingenew-AU
+    lat: -29.01
+    lon: 115.34
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: ATLAS
   - name: Awarua-NZ
     lat: -46.53
     lon: 168.37
@@ -206,15 +213,5 @@ ocean_color: "#d4dbdc"
 border_color: "#ebd6d9"
 
 optimization:
-  enabled: false
-
-propulsion:
   enabled: true
-  spacecraft:
-    dry_mass_kg: 500
-    cross_section_m2: 2.0
-    drag_coefficient: 2.2
-  thruster_preset: "BHT-600"
-  atmosphere:
-    solar_activity_f107: 150
-  margin_factor: 1.5
+

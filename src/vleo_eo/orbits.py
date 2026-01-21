@@ -475,3 +475,86 @@ def validate_propagation(
         print(f"  Warnings: {results['warnings']}")
 
     return results
+
+
+def ltdn_to_raan(ltdn_hours: float, epoch: datetime) -> float:
+    """
+    Convert Local Time of Descending Node to RAAN.
+
+    For a sun-synchronous orbit, RAAN is related to the local solar time
+    at which the satellite crosses the equator going southward (descending node).
+
+    Parameters
+    ----------
+    ltdn_hours : float
+        Local Time of Descending Node in hours (e.g., 10.5 for 10:30 AM).
+    epoch : datetime
+        Mission start date/time.
+
+    Returns
+    -------
+    float
+        RAAN in degrees.
+    """
+    # Days since J2000.0 (Jan 1, 2000, 12:00 TT)
+    if epoch.tzinfo is not None:
+        j2000 = datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    else:
+        j2000 = datetime(2000, 1, 1, 12, 0, 0)
+    days_since_j2000 = (epoch - j2000).total_seconds() / 86400
+
+    # Mean longitude of the Sun (simplified)
+    L_sun = 280.46 + 0.9856474 * days_since_j2000
+    L_sun = L_sun % 360
+
+    # Mean anomaly of the Sun
+    g_sun = 357.528 + 0.9856003 * days_since_j2000
+    g_sun_rad = np.radians(g_sun)
+
+    # Ecliptic longitude of the Sun
+    lambda_sun = L_sun + 1.915 * np.sin(g_sun_rad) + 0.020 * np.sin(2 * g_sun_rad)
+
+    # Right ascension of the Sun (simplified)
+    ra_sun = lambda_sun % 360
+
+    # RAAN from LTDN: RAAN = RA_sun + (LTDN - 12) * 15 degrees
+    raan = ra_sun + (ltdn_hours - 12) * 15
+    raan = raan % 360
+
+    return raan
+
+
+def calculate_sso_inclination(altitude_km: float) -> float:
+    """
+    Calculate sun-synchronous inclination for given altitude.
+
+    For sun-synchronous orbit, the nodal precession rate must equal
+    the Earth's mean motion around the Sun (~0.9856 deg/day).
+
+    Parameters
+    ----------
+    altitude_km : float
+        Orbital altitude in kilometers.
+
+    Returns
+    -------
+    float
+        Required inclination in degrees.
+    """
+    J2 = 1.08263e-3
+    Re = 6378.137  # km
+    mu = 398600.4418  # km^3/s^2
+
+    a = Re + altitude_km  # Semi-major axis (km)
+    n = np.sqrt(mu / a**3) * 86400  # Mean motion (rad/day)
+
+    # Required precession rate for SSO: 0.9856 deg/day
+    omega_dot_required = np.radians(0.9856)  # rad/day
+
+    # Solve for cos(i)
+    cos_i = -omega_dot_required / (1.5 * n * J2 * (Re/a)**2)
+    cos_i = np.clip(cos_i, -1, 1)
+
+    inclination = np.degrees(np.arccos(cos_i))
+
+    return inclination

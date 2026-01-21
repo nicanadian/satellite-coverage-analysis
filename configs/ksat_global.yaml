@@ -173,13 +173,3 @@ border_color: "#ebd6d9"
 optimization:
   enabled: false
 
-propulsion:
-  enabled: true
-  spacecraft:
-    dry_mass_kg: 500
-    cross_section_m2: 2.0
-    drag_coefficient: 2.2
-  thruster_preset: "BHT-600"
-  atmosphere:
-    solar_activity_f107: 150
-  margin_factor: 1.5

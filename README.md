@@ -9,7 +9,6 @@ A Python package and CLI tool for analyzing satellite coverage, downlink contact
 - **Downlink Contacts**: Compute ground station contact windows with validation
 - **Downlink Delay Metrics**: Payload downlink delay analysis for each collection event
 - **Reporting**: Generate Excel and PowerPoint reports with plots and KPIs
-- **Station-Keeping Analysis**: Hall effect thruster propulsion budgets
 
 ## Environment Setup
 
@@ -248,8 +247,7 @@ satellite-coverage-analysis/
 ├── targets/
 │   └── target_aoi_deck_apac.geojson
 ├── scripts/
-│   ├── generate_full_presentation.py
-│   └── validate_outputs.py
+│   └── generate_full_presentation.py
 ├── src/
 │   └── vleo_eo/
 │       ├── __init__.py
@@ -259,10 +257,8 @@ satellite-coverage-analysis/
 │       ├── contacts.py       # Ground station contacts
 │       ├── data_model.py     # Data volume modeling
 │       ├── plots.py          # Visualization functions
-│       ├── reports.py        # Excel and PPT generation
-│       ├── optimization.py   # Ground station optimization
-│       ├── propulsion.py     # Station-keeping analysis
-│       └── ground_station_db.py
+│       ├── reports.py        # Excel report generation
+│       └── optimization.py   # Ground station optimization
 └── results/                  # Output directory
 ```
 
@@ -315,12 +311,6 @@ downlink_delay_df = calculate_downlink_delay(mode_dfs, config.ground_stations)
 ```
 
 ## Validation
-
-Run output validation to verify analysis results:
-
-```bash
-python scripts/validate_outputs.py results/ksat_baseline
-```
 
 ### Automated Validation Checks
 

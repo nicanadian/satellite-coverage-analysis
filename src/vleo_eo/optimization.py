@@ -19,13 +19,6 @@ import pandas as pd
 from skyfield.api import EarthSatellite, load, wgs84
 
 from .config import AnalysisConfig, GroundStationConfig, OptimizationConfig
-from .ground_station_db import (
-    GROUND_STATION_DATABASE,
-    get_stations_by_provider,
-    get_ttc_capable_stations,
-    get_ka_capable_stations,
-    station_to_config,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -644,78 +637,73 @@ def run_optimization(
         logger.info("Optimization disabled in config")
         return {}
 
-    # Determine providers to optimize
-    providers = opt_config.providers if opt_config.providers else ['ATLAS', 'AWS', 'KSAT', 'Viasat']
+    # Get candidate stations from config
+    all_stations = config.ground_stations
 
-    results = {}
+    # Filter to TT&C-capable and Ka-capable stations
+    ttc_candidates = [gs for gs in all_stations if gs.ttc_capable]
+    ka_candidates = [gs for gs in all_stations if gs.ka_band]
 
-    for provider in providers:
-        logger.info(f"Running optimization for provider: {provider}")
+    if not ttc_candidates:
+        logger.warning("No TT&C-capable stations found in config")
+        return {}
 
-        # Get candidate stations from database
-        ttc_candidates = [
-            GroundStationConfig(**station_to_config(s))
-            for s in get_ttc_capable_stations(provider)
-        ]
-        ka_candidates = [
-            GroundStationConfig(**station_to_config(s))
-            for s in get_ka_capable_stations(provider)
-        ]
+    # Determine provider name for results (use config provider or 'config')
+    provider_names = list(set(gs.provider for gs in all_stations if gs.provider))
+    provider_label = provider_names[0] if len(provider_names) == 1 else 'config'
 
-        if not ttc_candidates:
-            logger.warning(f"No TT&C-capable stations found for {provider}")
-            continue
+    logger.info(f"Running optimization with {len(ttc_candidates)} TT&C and {len(ka_candidates)} Ka stations from config")
 
-        # Run TT&C optimization
+    # Run TT&C optimization
+    if opt_config.approach == 'exhaustive':
+        ttc_stations, ttc_coverage, ttc_iters = exhaustive_ttc_optimization(
+            orbit_df, tle_data, ttc_candidates, config,
+            required_contacts_per_rev=opt_config.ttc_contacts_per_rev,
+            max_stations=opt_config.max_exhaustive_stations,
+        )
+    else:
+        ttc_stations, ttc_coverage, ttc_iters = greedy_ttc_optimization(
+            orbit_df, tle_data, ttc_candidates, config,
+            required_contacts_per_rev=opt_config.ttc_contacts_per_rev,
+        )
+
+    # Run Ka optimization (only if we have Ka candidates and collections)
+    ka_stations = []
+    ka_percent = 0.0
+    ka_iters = 0
+
+    if ka_candidates and len(collect_df) > 0:
         if opt_config.approach == 'exhaustive':
-            ttc_stations, ttc_coverage, ttc_iters = exhaustive_ttc_optimization(
-                orbit_df, tle_data, ttc_candidates, config,
-                required_contacts_per_rev=opt_config.ttc_contacts_per_rev,
+            ka_stations, ka_percent, ka_iters = exhaustive_ka_optimization(
+                collect_df, tle_data, ka_candidates, config,
+                delivery_hours=opt_config.ka_delivery_hours,
+                target_percent=opt_config.ka_delivery_percent,
                 max_stations=opt_config.max_exhaustive_stations,
             )
         else:
-            ttc_stations, ttc_coverage, ttc_iters = greedy_ttc_optimization(
-                orbit_df, tle_data, ttc_candidates, config,
-                required_contacts_per_rev=opt_config.ttc_contacts_per_rev,
+            ka_stations, ka_percent, ka_iters = greedy_ka_optimization(
+                collect_df, tle_data, ka_candidates, config,
+                delivery_hours=opt_config.ka_delivery_hours,
+                target_percent=opt_config.ka_delivery_percent,
             )
 
-        # Run Ka optimization (only if we have Ka candidates and collections)
-        ka_stations = []
-        ka_percent = 0.0
-        ka_iters = 0
+    result = OptimizationResult(
+        provider=provider_label,
+        ttc_stations=ttc_stations,
+        ka_stations=ka_stations,
+        ttc_coverage_percent=ttc_coverage,
+        ka_delivery_percent=ka_percent,
+        ttc_satisfied=ttc_coverage >= 100.0,  # All revs have required contacts
+        ka_satisfied=ka_percent >= opt_config.ka_delivery_percent,
+        optimization_approach=opt_config.approach,
+        iterations=ttc_iters + ka_iters,
+    )
 
-        if ka_candidates and len(collect_df) > 0:
-            if opt_config.approach == 'exhaustive':
-                ka_stations, ka_percent, ka_iters = exhaustive_ka_optimization(
-                    collect_df, tle_data, ka_candidates, config,
-                    delivery_hours=opt_config.ka_delivery_hours,
-                    target_percent=opt_config.ka_delivery_percent,
-                    max_stations=opt_config.max_exhaustive_stations,
-                )
-            else:
-                ka_stations, ka_percent, ka_iters = greedy_ka_optimization(
-                    collect_df, tle_data, ka_candidates, config,
-                    delivery_hours=opt_config.ka_delivery_hours,
-                    target_percent=opt_config.ka_delivery_percent,
-                )
+    logger.info(f"Optimization Results:")
+    logger.info(f"  TT&C: {len(ttc_stations)} stations, {ttc_coverage:.1f}% coverage")
+    logger.info(f"  Ka: {len(ka_stations)} stations, {ka_percent:.1f}% delivery")
 
-        results[provider] = OptimizationResult(
-            provider=provider,
-            ttc_stations=ttc_stations,
-            ka_stations=ka_stations,
-            ttc_coverage_percent=ttc_coverage,
-            ka_delivery_percent=ka_percent,
-            ttc_satisfied=ttc_coverage >= 100.0,  # All revs have required contacts
-            ka_satisfied=ka_percent >= opt_config.ka_delivery_percent,
-            optimization_approach=opt_config.approach,
-            iterations=ttc_iters + ka_iters,
-        )
-
-        logger.info(f"{provider} Results:")
-        logger.info(f"  TT&C: {len(ttc_stations)} stations, {ttc_coverage:.1f}% coverage")
-        logger.info(f"  Ka: {len(ka_stations)} stations, {ka_percent:.1f}% delivery")
-
-    return results
+    return {provider_label: result}
 
 
 def optimization_results_to_dataframe(results: Dict[str, OptimizationResult]) -> pd.DataFrame:

@@ -705,10 +705,6 @@ def calculate_downlink_delay(
     return delay_df
 
 
-# Backward compatibility alias
-calculate_ttnc_ka = calculate_downlink_delay
-
-
 def validate_contacts(
     mode_dfs: Dict[str, pd.DataFrame],
     ground_stations: List[GroundStationConfig],

@@ -26,7 +26,7 @@ downlink_rate_mbps: 800
 min_elevation_sx_deg: 5.0   # S-band and X-band
 min_elevation_ka_deg: 10.0  # Ka-band
 
-# ViaSat RTE ground station network (9 stations)
+# ViaSat RTE ground station network (11 stations)
 ground_stations:
   # Africa
   - name: Viasat-Accra-Ghana
@@ -36,10 +36,17 @@ ground_stations:
     x_band: true
     ka_band: true
     provider: Viasat
+  - name: Viasat-Pretoria-South-Africa
+    lat: -25.74
+    lon: 28.25
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: Viasat
   # Asia-Pacific
-  - name: Viasat-Mingenew-WA
-    lat: -28.97
-    lon: 116.01
+  - name: Viasat-Alice-Springs-Australia
+    lat: -23.7
+    lon: 133.8
     s_band: true
     x_band: true
     ka_band: true
@@ -65,6 +72,13 @@ ground_stations:
     s_band: true
     x_band: true
     ka_band: true
+    provider: Viasat
+  - name: Viasat-Pendergass-US
+    lat: 34.12
+    lon: -83.02
+    s_band: true
+    x_band: true
+    ka_band: false
     provider: Viasat
   # Europe
   - name: Viasat-Guildford-UK
@@ -138,13 +152,3 @@ border_color: "#ebd6d9"
 optimization:
   enabled: false
 
-propulsion:
-  enabled: true
-  spacecraft:
-    dry_mass_kg: 500
-    cross_section_m2: 2.0
-    drag_coefficient: 2.2
-  thruster_preset: "BHT-600"
-  atmosphere:
-    solar_activity_f107: 150
-  margin_factor: 1.5

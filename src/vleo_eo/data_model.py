@@ -10,59 +10,7 @@ from typing import Dict, List, Optional, Tuple, Any
 import numpy as np
 import pandas as pd
 
-from .config import ImagingModeConfig, GroundStationConfig
-
-
-def calculate_data_volume(
-    mode: ImagingModeConfig,
-) -> Dict[str, float]:
-    """
-    Calculate data volume parameters for an imaging mode.
-
-    Parameters
-    ----------
-    mode : ImagingModeConfig
-        Imaging mode configuration.
-
-    Returns
-    -------
-    Dict[str, float]
-        Data volume parameters:
-        - raw_data_size_gb: Raw data per collection in GB
-        - downlink_duration_s: Time to downlink at given rate
-    """
-    # Raw data size = collection rate * dwell time
-    raw_data_size_gb = mode.collection_rate_gbps * mode.collect_dwell_time_s
-
-    return {
-        'raw_data_size_gb': raw_data_size_gb,
-        'dwell_time_s': mode.collect_dwell_time_s,
-        'collection_rate_gbps': mode.collection_rate_gbps,
-    }
-
-
-def calculate_downlink_duration(
-    data_size_gb: float,
-    downlink_rate_mbps: float,
-) -> float:
-    """
-    Calculate downlink duration for a given data size.
-
-    Parameters
-    ----------
-    data_size_gb : float
-        Data size in GB.
-    downlink_rate_mbps : float
-        Downlink rate in Mbps.
-
-    Returns
-    -------
-    float
-        Downlink duration in seconds.
-    """
-    # Convert GB to Gb (multiply by 8) then to Mb (multiply by 1000)
-    data_size_mb = data_size_gb * 8 * 1000
-    return data_size_mb / downlink_rate_mbps
+from .config import GroundStationConfig
 
 
 def calculate_contact_capacity(

@@ -25,10 +25,9 @@ from pptx.enum.text import PP_ALIGN
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.vleo_eo.orbits import create_tle_data, calculate_ground_track
+from src.vleo_eo.orbits import create_tle_data, calculate_ground_track, ltdn_to_raan, calculate_sso_inclination
 from src.vleo_eo.contacts import calculate_comm_range_km, calculate_ground_distance_km
 from src.vleo_eo.config import load_config
-from src.vleo_eo.propulsion import ltdn_to_raan, calculate_sso_inclination
 
 
 def create_comm_cone_geodesic(lon: float, lat: float, min_elevation_deg: float, sat_altitude_km: float):

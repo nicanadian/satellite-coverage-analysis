@@ -26,7 +26,7 @@ downlink_rate_mbps: 800
 min_elevation_sx_deg: 5.0   # S-band and X-band
 min_elevation_ka_deg: 10.0  # Ka-band
 
-# KSAT ground station network (16 stations)
+# KSAT ground station network (14 stations)
 ground_stations:
   # Polar Stations (critical for LEO coverage)
   - name: KSAT-Svalbard-SvalSat
@@ -173,13 +173,3 @@ border_color: "#ebd6d9"
 optimization:
   enabled: true
 
-propulsion:
-  enabled: true
-  spacecraft:
-    dry_mass_kg: 500
-    cross_section_m2: 2.0
-    drag_coefficient: 2.2
-  thruster_preset: "BHT-600"
-  atmosphere:
-    solar_activity_f107: 150
-  margin_factor: 1.5

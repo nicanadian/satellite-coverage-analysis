@@ -61,12 +61,7 @@ def run_single_analysis(
     )
     from src.vleo_eo.reports import generate_excel_report
     from src.vleo_eo.optimization import run_optimization, optimization_results_to_dataframe
-    from src.vleo_eo.propulsion import (
-        AtmosphericModel, SpacecraftConfig, HallThrusterConfig,
-        analyze_station_keeping, generate_propulsion_report,
-        print_station_keeping_summary, ltdn_to_raan, calculate_sso_inclination,
-        THRUSTER_PRESETS
-    )
+    from src.vleo_eo.orbits import ltdn_to_raan, calculate_sso_inclination
 
     import matplotlib
     matplotlib.use('Agg')  # Non-interactive backend for CLI
@@ -130,46 +125,6 @@ def run_single_analysis(
             print(f"  Satellite {sat.sat_id}: SSO inclination={sso_inc:.2f}°, RAAN={sso_raan:.2f}°")
 
     # =========================================================================
-    # Parse propulsion configuration
-    # =========================================================================
-    propulsion_config = config.raw_config.get('propulsion', {})
-    propulsion_enabled = propulsion_config.get('enabled', False)
-    propulsion_result = None
-    spacecraft_config = None
-    thruster_config = None
-    atmosphere_config = None
-
-    if propulsion_enabled:
-        # Spacecraft config
-        sc_cfg = propulsion_config.get('spacecraft', {})
-        spacecraft_config = SpacecraftConfig(
-            mass_kg=sc_cfg.get('dry_mass_kg', 500),
-            cross_section_m2=sc_cfg.get('cross_section_m2', 2.0),
-            drag_coefficient=sc_cfg.get('drag_coefficient', 2.2),
-        )
-
-        # Thruster config
-        thruster_preset = propulsion_config.get('thruster_preset', 'BHT-600')
-        if thruster_preset.lower() == 'custom':
-            custom = propulsion_config.get('custom_thruster', {})
-            thruster_config = HallThrusterConfig(
-                name=custom.get('name', 'Custom HET'),
-                thrust_mN=custom.get('thrust_mN', 50.0),
-                isp_s=custom.get('isp_s', 1500),
-                power_W=custom.get('power_W', 1000),
-                propellant=custom.get('propellant', 'Xenon'),
-                efficiency=custom.get('efficiency', 0.55),
-            )
-        else:
-            thruster_config = THRUSTER_PRESETS.get(thruster_preset, THRUSTER_PRESETS['BHT-600'])
-
-        # Atmosphere config
-        atm_cfg = propulsion_config.get('atmosphere', {})
-        atmosphere_config = AtmosphericModel(
-            f107=atm_cfg.get('solar_activity_f107', 150),
-        )
-
-    # =========================================================================
     # Phase 1: Orbit Propagation
     # =========================================================================
     print("\n" + "-" * 60)
@@ -216,42 +171,6 @@ def run_single_analysis(
         for error in prop_validation['errors']:
             print(f"  - {error}")
         sys.exit(1)
-
-    # =========================================================================
-    # Phase 1.5: Hall Effect Thruster Station-Keeping Analysis
-    # =========================================================================
-    propulsion_df = None
-
-    if propulsion_enabled and spacecraft_config and thruster_config:
-        print("\n" + "-" * 60)
-        print("Phase 1.5: Hall Effect Thruster Station-Keeping Analysis")
-        print("-" * 60)
-
-        # Use average altitude from satellites
-        avg_altitude = sum(s.altitude_km for s in config.satellites) / len(config.satellites)
-        margin_factor = propulsion_config.get('margin_factor', 1.5)
-
-        print(f"\nSpacecraft: {spacecraft_config.mass_kg} kg, {spacecraft_config.cross_section_m2} m² area")
-        print(f"Thruster: {thruster_config.name}")
-        print(f"Target Altitude: {avg_altitude:.0f} km")
-        print(f"Solar Activity (F10.7): {atmosphere_config.f107} SFU")
-
-        propulsion_result = analyze_station_keeping(
-            altitude_km=avg_altitude,
-            duration_days=config.duration_days,
-            spacecraft=spacecraft_config,
-            thruster=thruster_config,
-            atmosphere=atmosphere_config,
-            margin_factor=margin_factor,
-        )
-
-        # Generate propulsion report DataFrame
-        propulsion_df = generate_propulsion_report(
-            propulsion_result, spacecraft_config, thruster_config, atmosphere_config
-        )
-
-        # Print summary
-        print_station_keeping_summary(propulsion_result, thruster_config)
 
     # =========================================================================
     # Phase 2: Coverage/Access Calculation
@@ -499,7 +418,6 @@ def run_single_analysis(
             downlink_kpis,
             output_path=output_path / config.excel_filename,
             optimization_results=optimization_results,
-            propulsion_df=propulsion_df,
         )
 
     # Generate PowerPoint report (comprehensive presentation with detailed slides)
@@ -630,14 +548,6 @@ def run_single_analysis(
             median_time = ka_stats.get('median_time_to_viable')
             runtime_stats['ka_median_latency'] = f"{median_time:.1f} min" if median_time else "N/A"
 
-        if propulsion_result:
-            runtime_stats['thruster'] = thruster_config.name
-            runtime_stats['delta_v'] = f"{propulsion_result.total_delta_v_m_s:.2f} m/s"
-            runtime_stats['propellant'] = f"{propulsion_result.propellant_mass_kg:.2f} kg"
-            runtime_stats['propellant_margin'] = f"{propulsion_result.propellant_mass_kg * propulsion_result.margin_factor:.2f} kg"
-            runtime_stats['firing_time'] = f"{propulsion_result.total_firing_time_hours:.1f} hrs ({propulsion_result.duty_cycle_percent:.1f}% duty)"
-            runtime_stats['annual_propellant'] = f"{propulsion_result.propellant_per_year_kg:.1f} kg/yr"
-
         # Build full presentation
         print("\n  Building PowerPoint presentation...")
         build_presentation(plots_path, config, output_path / config.ppt_filename,
@@ -656,7 +566,6 @@ def run_single_analysis(
             downlink_kpis,
             output_path=output_path / config.excel_filename,
             optimization_results=optimization_results,
-            propulsion_df=propulsion_df,
             ttc_analysis=ttc_analysis,
             ka_analysis=ka_analysis,
         )
@@ -701,15 +610,6 @@ def run_single_analysis(
         for provider, result in optimization_results.items():
             status = "MET" if (result.ttc_satisfied and result.ka_satisfied) else "NOT MET"
             print(f"  {provider}: {len(result.ttc_stations)} TT&C + {len(result.ka_stations)} Ka stations (SLA: {status})")
-
-    if propulsion_result:
-        print(f"\nStation-Keeping (HET):")
-        print(f"  Thruster: {thruster_config.name}")
-        print(f"  Delta-V Required: {propulsion_result.total_delta_v_m_s:.2f} m/s")
-        print(f"  Propellant ({thruster_config.propellant}): {propulsion_result.propellant_mass_kg:.2f} kg")
-        print(f"  Propellant (with margin): {propulsion_result.propellant_mass_kg * propulsion_result.margin_factor:.2f} kg")
-        print(f"  Firing Time: {propulsion_result.total_firing_time_hours:.1f} hours ({propulsion_result.duty_cycle_percent:.1f}% duty)")
-        print(f"  Annualized Propellant: {propulsion_result.propellant_per_year_kg:.1f} kg/year")
 
     print("\nDone!")
 

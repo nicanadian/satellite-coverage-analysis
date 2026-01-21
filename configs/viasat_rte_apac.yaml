@@ -26,7 +26,7 @@ downlink_rate_mbps: 800
 min_elevation_sx_deg: 5.0   # S-band and X-band
 min_elevation_ka_deg: 10.0  # Ka-band
 
-# ViaSat RTE ground station network (9 stations)
+# ViaSat RTE ground station network (11 stations)
 ground_stations:
   # Africa
   - name: Viasat-Accra-Ghana
@@ -78,7 +78,7 @@ ground_stations:
     lon: -83.02
     s_band: true
     x_band: true
-    ka_band: true
+    ka_band: false
     provider: Viasat
   # Europe
   - name: Viasat-Guildford-UK
@@ -150,15 +150,5 @@ ocean_color: "#d4dbdc"
 border_color: "#ebd6d9"
 
 optimization:
-  enabled: true
+  enabled: false
 
-propulsion:
-  enabled: true
-  spacecraft:
-    dry_mass_kg: 500
-    cross_section_m2: 2.0
-    drag_coefficient: 2.2
-  thruster_preset: "BHT-600"
-  atmosphere:
-    solar_activity_f107: 150
-  margin_factor: 1.5
