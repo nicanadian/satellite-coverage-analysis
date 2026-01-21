@@ -57,6 +57,7 @@ def generate_tle(
     altitude_km: float,
     sat_num: int,
     raan_deg: float = 0.0,
+    no_drag: bool = False,
 ) -> Tuple[str, str]:
     """
     Generate a TLE for a satellite given basic orbital parameters.
@@ -75,6 +76,9 @@ def generate_tle(
         Satellite catalog number.
     raan_deg : float, optional
         Right Ascension of Ascending Node in degrees (default 0).
+    no_drag : bool, optional
+        If True, set BSTAR drag term to 0 for idealized propagation
+        without atmospheric drag decay (default False).
 
     Returns
     -------
@@ -99,8 +103,11 @@ def generate_tle(
     # Format satellite number
     sat_num_str = f"{sat_num:05d}"
 
+    # BSTAR drag term: 0 for no drag, otherwise default value for VLEO
+    bstar = "00000-0" if no_drag else "50000-4"
+
     # Line 1
-    line1 = f"1 {sat_num_str}U 20001A   {epoch_str} .00000000  00000-0  50000-4 0  999"
+    line1 = f"1 {sat_num_str}U 20001A   {epoch_str} .00000000  00000-0  {bstar} 0  999"
     line1 = line1 + str(calculate_checksum(line1))
 
     # Line 2
@@ -118,6 +125,7 @@ def create_tle_data(
     epoch: datetime,
     tle_line1: Optional[str] = None,
     tle_line2: Optional[str] = None,
+    no_drag: bool = False,
 ) -> TLEData:
     """
     Create TLE data for a satellite.
@@ -141,6 +149,8 @@ def create_tle_data(
         Pre-existing TLE line 1.
     tle_line2 : str, optional
         Pre-existing TLE line 2.
+    no_drag : bool, optional
+        If True, generate TLE with BSTAR=0 for no atmospheric drag (default False).
 
     Returns
     -------
@@ -150,7 +160,7 @@ def create_tle_data(
     if tle_line1 and tle_line2:
         line1, line2 = tle_line1, tle_line2
     else:
-        line1, line2 = generate_tle(epoch, inclination_deg, altitude_km, sat_id, raan_deg)
+        line1, line2 = generate_tle(epoch, inclination_deg, altitude_km, sat_id, raan_deg, no_drag=no_drag)
 
     # Calculate mean motion from orbital parameters
     earth_radius_km = 6378.137

@@ -1,0 +1,150 @@
+# ViaSat RTE Global Configuration
+# 1 satellite, 250km SSO, 30-day analysis, Global targets
+# ViaSat Real-Time Earth (RTE) ground station network only
+
+start_date: "2027-02-15"
+duration_days: 30
+time_step_s: 10.0
+
+orbit:
+  ltdn_hours: 10.5
+  auto_sso: true
+  no_drag: true  # Constant altitude (no atmospheric decay)
+
+# Single satellite - SSO at 250km
+satellites:
+  - sat_id: 1
+    inclination_deg: 96.6
+    altitude_km: 250
+    raan_deg: 0
+
+# Downlink parameters
+image_size_gb: 6.0
+downlink_rate_mbps: 800
+
+# Elevation masks
+min_elevation_sx_deg: 5.0   # S-band and X-band
+min_elevation_ka_deg: 10.0  # Ka-band
+
+# ViaSat RTE ground station network (9 stations)
+ground_stations:
+  # Africa
+  - name: Viasat-Accra-Ghana
+    lat: 5.56
+    lon: -0.19
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: Viasat
+  # Asia-Pacific
+  - name: Viasat-Mingenew-WA
+    lat: -28.97
+    lon: 116.01
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: Viasat
+  - name: Viasat-Obihiro-Japan
+    lat: 42.92
+    lon: 143.20
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: Viasat
+  - name: Viasat-Dubai-UAE
+    lat: 25.08
+    lon: 55.31
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: Viasat
+  # North America
+  - name: Viasat-Fairbanks-AK
+    lat: 64.84
+    lon: -147.72
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: Viasat
+  # Europe
+  - name: Viasat-Guildford-UK
+    lat: 51.24
+    lon: -0.57
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: Viasat
+  - name: Viasat-Ojebyn-Sweden
+    lat: 65.29
+    lon: 21.07
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: Viasat
+  # South America
+  - name: Viasat-Cordoba-Argentina
+    lat: -31.42
+    lon: -64.18
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: Viasat
+  - name: Viasat-Ushuaia-Argentina
+    lat: -54.81
+    lon: -68.31
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: Viasat
+
+imaging_modes:
+  - name: "Panchromatic"
+    fov_half_angle_deg: 2.5
+    collect_dwell_time_s: 5.0
+    collection_rate_gbps: 2.0
+    processing_time_min: 30.0
+    off_nadir_min_deg: 0.0
+    off_nadir_max_deg: 60.0
+  - name: "Multispectral"
+    fov_half_angle_deg: 3.5
+    collect_dwell_time_s: 8.0
+    collection_rate_gbps: 1.5
+    processing_time_min: 45.0
+    off_nadir_min_deg: 0.0
+    off_nadir_max_deg: 60.0
+
+targets:
+  geojson_path: "targets/target_aoi_deck_global.geojson"
+  use_grid: false
+
+slew_rate_deg_per_s: 1.0
+mode_switch_time_s: 30.0
+contact_buffer_s: 30.0
+min_access_duration_s: 30.0
+access_merge_buffer_s: 240.0
+downlink_search_hours: 4.0
+
+output_dir: "results/viasat_rte_global"
+excel_filename: "viasat_rte_global.xlsx"
+ppt_filename: "viasat_rte_global.pptx"
+plots_subdir: "plots"
+
+plot_dpi: 300
+plot_figsize: [15, 10]
+land_color: "#fafaf9"
+ocean_color: "#d4dbdc"
+border_color: "#ebd6d9"
+
+optimization:
+  enabled: false
+
+propulsion:
+  enabled: true
+  spacecraft:
+    dry_mass_kg: 500
+    cross_section_m2: 2.0
+    drag_coefficient: 2.2
+  thruster_preset: "BHT-600"
+  atmosphere:
+    solar_activity_f107: 150
+  margin_factor: 1.5

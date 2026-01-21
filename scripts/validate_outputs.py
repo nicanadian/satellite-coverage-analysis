@@ -45,7 +45,7 @@ def validate_excel_report(excel_path: Path) -> Dict[str, Any]:
         required_sheets = [
             "Config", "Satellites", "Ground_Stations", "Imaging_Modes",
             "Coverage_KPIs", "Access_Windows", "Contacts",
-            "Backlog_TimeSeries", "TTNC_Ka"
+            "Downlink_Delay"
         ]
 
         for sheet in required_sheets:
@@ -54,7 +54,7 @@ def validate_excel_report(excel_path: Path) -> Dict[str, Any]:
                 row_count = len(df)
                 results["checks"].append(f"Sheet '{sheet}': {row_count} rows")
 
-                if row_count == 0 and sheet not in ["Coverage_KPIs", "TTNC_Summary"]:
+                if row_count == 0 and sheet not in ["Coverage_KPIs", "Downlink_Delay_Summary"]:
                     results["warnings"].append(f"Sheet '{sheet}' is empty")
             else:
                 results["errors"].append(f"Missing required sheet: {sheet}")
@@ -73,37 +73,27 @@ def validate_excel_report(excel_path: Path) -> Dict[str, Any]:
                     else:
                         results["checks"].append("Access durations: all positive")
 
-        if "Backlog_TimeSeries" in sheet_names:
-            df = pd.read_excel(excel_path, sheet_name="Backlog_TimeSeries")
-            if len(df) > 0 and "backlog_gb" in df.columns:
-                neg_backlog = (df["backlog_gb"] < 0).sum()
-                if neg_backlog > 0:
-                    results["errors"].append(f"Found {neg_backlog} negative backlog values")
-                    results["passed"] = False
-                else:
-                    results["checks"].append("Backlog values: all non-negative")
-
-        if "TTNC_Ka" in sheet_names:
-            df = pd.read_excel(excel_path, sheet_name="TTNC_Ka")
-            if len(df) > 0 and "TTNC_Ka_minutes" in df.columns:
-                valid_ttnc = df["TTNC_Ka_minutes"].dropna()
-                if len(valid_ttnc) > 0:
-                    neg_ttnc = (valid_ttnc < 0).sum()
-                    if neg_ttnc > 0:
-                        results["errors"].append(f"Found {neg_ttnc} negative TTNC values")
+        if "Downlink_Delay" in sheet_names:
+            df = pd.read_excel(excel_path, sheet_name="Downlink_Delay")
+            if len(df) > 0 and "Downlink_Delay_minutes" in df.columns:
+                valid_delay = df["Downlink_Delay_minutes"].dropna()
+                if len(valid_delay) > 0:
+                    neg_delay = (valid_delay < 0).sum()
+                    if neg_delay > 0:
+                        results["errors"].append(f"Found {neg_delay} negative downlink delay values")
                         results["passed"] = False
                     else:
-                        results["checks"].append("TTNC values: all non-negative")
+                        results["checks"].append("Downlink delay values: all non-negative")
 
                     # Check ordering: Median <= P90 <= P95
-                    median = valid_ttnc.median()
-                    p90 = valid_ttnc.quantile(0.90)
-                    p95 = valid_ttnc.quantile(0.95)
+                    median = valid_delay.median()
+                    p90 = valid_delay.quantile(0.90)
+                    p95 = valid_delay.quantile(0.95)
 
                     if median <= p90 <= p95:
-                        results["checks"].append(f"TTNC ordering valid: Median({median:.1f}) <= P90({p90:.1f}) <= P95({p95:.1f})")
+                        results["checks"].append(f"Downlink delay ordering valid: Median({median:.1f}) <= P90({p90:.1f}) <= P95({p95:.1f})")
                     else:
-                        results["warnings"].append(f"TTNC ordering issue: Median={median:.1f}, P90={p90:.1f}, P95={p95:.1f}")
+                        results["warnings"].append(f"Downlink delay ordering issue: Median={median:.1f}, P90={p90:.1f}, P95={p95:.1f}")
 
     except Exception as e:
         results["passed"] = False
@@ -127,8 +117,7 @@ def validate_plots(plots_dir: Path) -> Dict[str, Any]:
         ("comm_cones.png", 10),
         ("access_statistics.png", 10),
         ("contact_validity.png", 10),
-        ("backlog_timeseries.png", 10),
-        ("ttnc_distribution.png", 10),
+        ("downlink_delay_distribution.png", 10),
     ]
 
     for plot_name, min_size_kb in expected_plots:

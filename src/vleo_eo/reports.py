@@ -44,14 +44,15 @@ def generate_excel_report(
     config: AnalysisConfig,
     access_df: pd.DataFrame,
     mode_dfs: Dict[str, pd.DataFrame],
-    ttnc_df: pd.DataFrame,
-    backlog_df: pd.DataFrame,
+    downlink_delay_df: pd.DataFrame,
     coverage_kpis: Dict[str, Any],
     contact_kpis: Dict[str, Any],
     downlink_kpis: Dict[str, Any],
     output_path: Optional[Path] = None,
     optimization_results: Optional[Dict[str, Any]] = None,
     propulsion_df: Optional[pd.DataFrame] = None,
+    ttc_analysis: Optional[Dict[str, Any]] = None,
+    ka_analysis: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """
     Generate Excel report with all analysis results.
@@ -64,10 +65,8 @@ def generate_excel_report(
         Access windows DataFrame.
     mode_dfs : Dict[str, pd.DataFrame]
         Dictionary of mode DataFrames.
-    ttnc_df : pd.DataFrame
-        TTNC DataFrame.
-    backlog_df : pd.DataFrame
-        Backlog time series.
+    downlink_delay_df : pd.DataFrame
+        Payload downlink delay DataFrame.
     coverage_kpis : Dict
         Coverage KPIs from validation.
     contact_kpis : Dict
@@ -101,7 +100,7 @@ def generate_excel_report(
                 'Slew Rate (deg/s)',
                 'Mode Switch Time (s)',
                 'Contact Buffer (s)',
-                'TTNC Max Search (hours)',
+                'Downlink Search (hours)',
             ],
             'Value': [
                 config.start_date,
@@ -114,7 +113,7 @@ def generate_excel_report(
                 config.slew_rate_deg_per_s,
                 config.mode_switch_time_s,
                 config.contact_buffer_s,
-                config.ttnc_max_search_hours,
+                config.downlink_search_hours,
             ]
         }
         pd.DataFrame(config_data).to_excel(writer, sheet_name='Config', index=False)
@@ -184,7 +183,6 @@ def generate_excel_report(
             kpi_data.extend([
                 {'KPI': 'Total Data Collected', 'Value': round(downlink_kpis.get('total_data_collected_gb', 0), 2), 'Unit': 'GB'},
                 {'KPI': 'Total Data Downlinked', 'Value': round(downlink_kpis.get('total_data_downlinked_gb', 0), 2), 'Unit': 'GB'},
-                {'KPI': 'Peak Backlog', 'Value': round(downlink_kpis.get('peak_backlog_gb', 0), 2), 'Unit': 'GB'},
                 {'KPI': 'Downlink Efficiency', 'Value': round(downlink_kpis.get('downlink_efficiency_pct', 0), 1), 'Unit': '%'},
             ])
 
@@ -238,22 +236,17 @@ def generate_excel_report(
             if gs_stats_list:
                 pd.DataFrame(gs_stats_list).to_excel(writer, sheet_name='Downlink_KPIs', index=False)
 
-        # Sheet 6: Backlog Time Series
-        if not backlog_df.empty:
-            backlog_export = _convert_datetimes_to_string(backlog_df)
-            backlog_export.to_excel(writer, sheet_name='Backlog_TimeSeries', index=False)
+        # Sheet 6: Payload Downlink Delay
+        if not downlink_delay_df.empty:
+            delay_export = _convert_datetimes_to_string(downlink_delay_df)
+            delay_export.to_excel(writer, sheet_name='Downlink_Delay', index=False)
 
-        # Sheet 7: TTNC Ka
-        if not ttnc_df.empty:
-            ttnc_export = _convert_datetimes_to_string(ttnc_df)
-            ttnc_export.to_excel(writer, sheet_name='TTNC_Ka', index=False)
-
-            # TTNC Summary
-            ttnc_summary = []
-            for mode in ttnc_df['Imaging_Mode'].unique():
-                mode_data = ttnc_df[ttnc_df['Imaging_Mode'] == mode]['TTNC_Ka_minutes'].dropna()
+            # Downlink Delay Summary
+            delay_summary = []
+            for mode in downlink_delay_df['Imaging_Mode'].unique():
+                mode_data = downlink_delay_df[downlink_delay_df['Imaging_Mode'] == mode]['Downlink_Delay_minutes'].dropna()
                 if not mode_data.empty:
-                    ttnc_summary.append({
+                    delay_summary.append({
                         'Imaging Mode': mode,
                         'Count': len(mode_data),
                         'Median (min)': round(mode_data.median(), 1),
@@ -261,8 +254,8 @@ def generate_excel_report(
                         'P95 (min)': round(mode_data.quantile(0.95), 1),
                         'Max (min)': round(mode_data.max(), 1),
                     })
-            if ttnc_summary:
-                pd.DataFrame(ttnc_summary).to_excel(writer, sheet_name='TTNC_Summary', index=False)
+            if delay_summary:
+                pd.DataFrame(delay_summary).to_excel(writer, sheet_name='Downlink_Delay_Summary', index=False)
 
         # Sheet 8: Optimization Results (if available)
         if optimization_results:
@@ -298,7 +291,99 @@ def generate_excel_report(
             if opt_details:
                 pd.DataFrame(opt_details).to_excel(writer, sheet_name='Optimization_Stations', index=False)
 
-        # Sheet 9: Propulsion/Station-Keeping Analysis (if available)
+        # Sheet: TT&C Coverage Analysis (if available)
+        if ttc_analysis:
+            ttc_data = []
+
+            # Summary KPIs
+            ttc_data.append({'Category': 'Summary', 'Metric': 'Total TT&C Contacts', 'Value': ttc_analysis.get('total_contacts', 0), 'Unit': 'count'})
+            ttc_data.append({'Category': 'Summary', 'Metric': 'Total Revolutions', 'Value': ttc_analysis.get('total_revs', 0), 'Unit': 'count'})
+            ttc_data.append({'Category': 'Summary', 'Metric': 'Contacts per Day', 'Value': round(ttc_analysis.get('contacts_per_day', 0), 1), 'Unit': 'count/day'})
+            ttc_data.append({'Category': 'Summary', 'Metric': 'Contacts per Revolution', 'Value': round(ttc_analysis.get('contacts_per_rev', 0), 2), 'Unit': 'count/rev'})
+
+            # Gap Analysis
+            ttc_data.append({'Category': 'Gap Analysis', 'Metric': 'Maximum Gap', 'Value': round(ttc_analysis.get('max_gap_min', 0), 1), 'Unit': 'minutes'})
+            ttc_data.append({'Category': 'Gap Analysis', 'Metric': 'Average Gap', 'Value': round(ttc_analysis.get('avg_gap_min', 0), 1), 'Unit': 'minutes'})
+            ttc_data.append({'Category': 'Gap Analysis', 'Metric': 'Median Gap', 'Value': round(ttc_analysis.get('median_gap_min', 0), 1), 'Unit': 'minutes'})
+            ttc_data.append({'Category': 'Gap Analysis', 'Metric': 'P95 Gap', 'Value': round(ttc_analysis.get('p95_gap_min', 0), 1), 'Unit': 'minutes'})
+
+            # Requirement Compliance
+            ttc_data.append({'Category': 'Requirement', 'Metric': 'Revolutions Without Contact', 'Value': ttc_analysis.get('revs_without_contact', 0), 'Unit': 'count'})
+            ttc_data.append({'Category': 'Requirement', 'Metric': 'Coverage Percentage', 'Value': round(ttc_analysis.get('coverage_pct', 0), 1), 'Unit': '%'})
+            ttc_data.append({'Category': 'Requirement', 'Metric': '1 Pass/Rev Requirement Met', 'Value': 'YES' if ttc_analysis.get('requirement_met', False) else 'NO', 'Unit': ''})
+
+            pd.DataFrame(ttc_data).to_excel(writer, sheet_name='TTC_Coverage', index=False)
+
+            # Per-station breakdown
+            if 'station_contacts' in ttc_analysis and ttc_analysis['station_contacts']:
+                station_data = []
+                for station_name, stats in ttc_analysis['station_contacts'].items():
+                    station_data.append({
+                        'Station': station_name,
+                        'TT&C Contacts': stats.get('count', 0),
+                        'Ka-Band Capable': 'Yes' if stats.get('is_ka', False) else 'No',
+                    })
+                if station_data:
+                    pd.DataFrame(station_data).to_excel(writer, sheet_name='TTC_By_Station', index=False)
+
+            # Raw gap data for periodicity analysis
+            if 'gaps' in ttc_analysis and ttc_analysis['gaps']:
+                gaps_data = []
+                orbital_period = ttc_analysis.get('orbital_period_min', 90)
+                for gap in ttc_analysis['gaps']:
+                    gap_time = gap.get('time')
+                    # Calculate day number from start
+                    if gap_time and hasattr(config, 'start_datetime'):
+                        day_num = (gap_time - config.start_datetime).total_seconds() / 86400
+                    else:
+                        day_num = None
+                    gaps_data.append({
+                        'Gap_Start_Time': gap_time.strftime('%Y-%m-%d %H:%M:%S') if gap_time and hasattr(gap_time, 'strftime') else str(gap_time),
+                        'Day_Number': round(day_num, 2) if day_num is not None else None,
+                        'Gap_Duration_min': round(gap.get('gap_min', 0), 1),
+                        'Gap_Duration_revs': round(gap.get('gap_min', 0) / orbital_period, 2) if orbital_period > 0 else None,
+                        'After_Station': gap.get('after_station', ''),
+                        'Before_Station': gap.get('before_station', ''),
+                        'Exceeds_1_Rev': 'Yes' if gap.get('gap_min', 0) > orbital_period else 'No',
+                    })
+                if gaps_data:
+                    pd.DataFrame(gaps_data).to_excel(writer, sheet_name='TTC_Gaps', index=False)
+
+        # Sheet: Ka-band Coverage Analysis (if available)
+        if ka_analysis:
+            ka_data = []
+
+            # Summary KPIs
+            ka_data.append({'Category': 'Summary', 'Metric': 'Total Collections', 'Value': ka_analysis.get('total_collects', 0), 'Unit': 'count'})
+            ka_data.append({'Category': 'Summary', 'Metric': 'Viable First Ka Contacts', 'Value': ka_analysis.get('viable_collects', 0), 'Unit': 'count'})
+            ka_data.append({'Category': 'Summary', 'Metric': 'Viable Percentage', 'Value': round(ka_analysis.get('viable_pct', 0), 1), 'Unit': '%'})
+
+            # Timing
+            ka_data.append({'Category': 'Timing', 'Metric': 'Min Contact Duration Needed', 'Value': round(ka_analysis.get('min_contact_duration_needed', 0), 1), 'Unit': 'minutes'})
+            median_time = ka_analysis.get('median_time_to_viable')
+            ka_data.append({'Category': 'Timing', 'Metric': 'Median Time to Viable Ka', 'Value': round(median_time, 1) if median_time else 'N/A', 'Unit': 'minutes'})
+            p95_time = ka_analysis.get('p95_time_to_viable')
+            ka_data.append({'Category': 'Timing', 'Metric': 'P95 Time to Viable Ka', 'Value': round(p95_time, 1) if p95_time else 'N/A', 'Unit': 'minutes'})
+
+            # Configuration
+            ka_data.append({'Category': 'Config', 'Metric': 'Image Size', 'Value': ka_analysis.get('image_size_gb', 0), 'Unit': 'GB'})
+            ka_data.append({'Category': 'Config', 'Metric': 'Downlink Rate', 'Value': ka_analysis.get('downlink_rate_mbps', 0), 'Unit': 'Mbps'})
+            ka_data.append({'Category': 'Config', 'Metric': 'Processing Buffer', 'Value': ka_analysis.get('processing_buffer_min', 5), 'Unit': 'minutes'})
+
+            pd.DataFrame(ka_data).to_excel(writer, sheet_name='Ka_Coverage', index=False)
+
+            # Per-station breakdown
+            if 'station_contacts' in ka_analysis and ka_analysis['station_contacts']:
+                station_data = []
+                for station_name, count in ka_analysis['station_contacts'].items():
+                    station_data.append({
+                        'Station': station_name,
+                        'Ka Contacts': count,
+                    })
+                if station_data:
+                    pd.DataFrame(station_data).to_excel(writer, sheet_name='Ka_By_Station', index=False)
+
+        # Sheet: Propulsion/Station-Keeping Analysis (if available)
         if propulsion_df is not None and not propulsion_df.empty:
             propulsion_df.to_excel(writer, sheet_name='Propulsion_Analysis', index=False)
 
@@ -311,7 +396,7 @@ def generate_ppt_report(
     coverage_kpis: Dict[str, Any],
     contact_kpis: Dict[str, Any],
     downlink_kpis: Dict[str, Any],
-    ttnc_df: pd.DataFrame,
+    downlink_delay_df: pd.DataFrame,
     plot_paths: Dict[str, Path],
     output_path: Optional[Path] = None,
     optimization_results: Optional[Dict[str, Any]] = None,
@@ -329,8 +414,8 @@ def generate_ppt_report(
         Contact KPIs.
     downlink_kpis : Dict
         Downlink KPIs.
-    ttnc_df : pd.DataFrame
-        TTNC DataFrame.
+    downlink_delay_df : pd.DataFrame
+        Payload downlink delay DataFrame.
     plot_paths : Dict[str, Path]
         Dictionary mapping plot names to file paths.
     output_path : Path, optional
@@ -429,42 +514,26 @@ def generate_ppt_report(
         slide.shapes.add_picture(str(plot_paths['contact_validity']),
                                  Inches(5), Inches(1.5), width=Inches(7.5))
 
-    # Slide 4: TTNC
+    # Slide 4: Payload Downlink Delay
     slide = prs.slides.add_slide(slide_layout)
-    _add_slide_title(slide, "Time to Next Ka Contact (TTNC)")
+    _add_slide_title(slide, "Payload Downlink Delay")
 
     kpi_text = []
-    if not ttnc_df.empty:
-        valid_ttnc = ttnc_df['TTNC_Ka_minutes'].dropna()
-        if not valid_ttnc.empty:
-            kpi_text.append(f"Median TTNC: {valid_ttnc.median():.1f} minutes")
-            kpi_text.append(f"P90 TTNC: {valid_ttnc.quantile(0.90):.1f} minutes")
-            kpi_text.append(f"P95 TTNC: {valid_ttnc.quantile(0.95):.1f} minutes")
-            kpi_text.append(f"Missing Data: {ttnc_df['TTNC_Ka_minutes'].isna().sum()}/{len(ttnc_df)}")
+    if not downlink_delay_df.empty:
+        valid_delay = downlink_delay_df['Downlink_Delay_minutes'].dropna()
+        if not valid_delay.empty:
+            kpi_text.append(f"Median Delay: {valid_delay.median():.1f} minutes")
+            kpi_text.append(f"P90 Delay: {valid_delay.quantile(0.90):.1f} minutes")
+            kpi_text.append(f"P95 Delay: {valid_delay.quantile(0.95):.1f} minutes")
+            kpi_text.append(f"Missing Data: {downlink_delay_df['Downlink_Delay_minutes'].isna().sum()}/{len(downlink_delay_df)}")
 
     _add_kpi_box(slide, kpi_text, Inches(0.5), Inches(1.5))
 
-    if 'ttnc_distribution' in plot_paths and plot_paths['ttnc_distribution'].exists():
-        slide.shapes.add_picture(str(plot_paths['ttnc_distribution']),
+    if 'downlink_delay_distribution' in plot_paths and plot_paths['downlink_delay_distribution'].exists():
+        slide.shapes.add_picture(str(plot_paths['downlink_delay_distribution']),
                                  Inches(5), Inches(1.5), width=Inches(7.5))
 
-    # Slide 5: Backlog
-    slide = prs.slides.add_slide(slide_layout)
-    _add_slide_title(slide, "Data Backlog Analysis")
-
-    kpi_text = []
-    if downlink_kpis:
-        kpi_text.append(f"Peak Backlog: {downlink_kpis.get('peak_backlog_gb', 0):.2f} GB")
-        kpi_text.append(f"Mean Backlog: {downlink_kpis.get('mean_backlog_gb', 0):.2f} GB")
-        kpi_text.append(f"Final Backlog: {downlink_kpis.get('final_backlog_gb', 0):.2f} GB")
-
-    _add_kpi_box(slide, kpi_text, Inches(0.5), Inches(1.5))
-
-    if 'backlog_timeseries' in plot_paths and plot_paths['backlog_timeseries'].exists():
-        slide.shapes.add_picture(str(plot_paths['backlog_timeseries']),
-                                 Inches(4.5), Inches(1.5), width=Inches(8))
-
-    # Slide 6: Ground Tracks (if available)
+    # Slide 5: Ground Tracks (if available)
     if 'ground_tracks' in plot_paths and plot_paths['ground_tracks'].exists():
         slide = prs.slides.add_slide(slide_layout)
         _add_slide_title(slide, "Satellite Ground Tracks")

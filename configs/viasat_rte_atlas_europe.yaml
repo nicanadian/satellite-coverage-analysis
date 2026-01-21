@@ -1,0 +1,220 @@
+# ViaSat RTE + ATLAS Space Europe Configuration
+# 1 satellite, 250km SSO, 30-day analysis, Europe targets
+# Combined ViaSat RTE and ATLAS Space ground station networks
+
+start_date: "2027-02-15"
+duration_days: 30
+time_step_s: 10.0
+
+orbit:
+  ltdn_hours: 10.5
+  auto_sso: true
+  no_drag: true  # Constant altitude (no atmospheric decay)
+
+# Single satellite - SSO at 250km
+satellites:
+  - sat_id: 1
+    inclination_deg: 96.6
+    altitude_km: 250
+    raan_deg: 0
+
+# Downlink parameters
+image_size_gb: 6.0
+downlink_rate_mbps: 800
+
+# Elevation masks
+min_elevation_sx_deg: 5.0   # S-band and X-band
+min_elevation_ka_deg: 10.0  # Ka-band
+
+# ViaSat RTE + ATLAS ground station network (19 stations)
+ground_stations:
+  # North America
+  - name: Barrow-AK
+    lat: 71.29
+    lon: -156.79
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: ATLAS
+  - name: North-Pole-AK
+    lat: 64.75
+    lon: -147.35
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: ATLAS
+  - name: Pendergrass-GA
+    lat: 34.24
+    lon: -83.63
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: ATLAS
+  - name: Paumalu-HI
+    lat: 21.67
+    lon: -158.02
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: ATLAS
+  - name: Harmon-Guam
+    lat: 13.48
+    lon: 144.80
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: ATLAS
+  # Europe
+  - name: Ojebyn-Sweden
+    lat: 65.29
+    lon: 21.07
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: ATLAS
+  - name: Muonio-Finland
+    lat: 67.94
+    lon: 23.68
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: ATLAS
+  - name: Dundee-Scotland
+    lat: 56.46
+    lon: -2.97
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: ATLAS
+  - name: Guildford-UK
+    lat: 51.24
+    lon: -0.57
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: ATLAS
+  # Asia-Pacific
+  - name: Chitose-Japan
+    lat: 42.82
+    lon: 141.65
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: ATLAS
+  - name: Obihiro-Japan
+    lat: 42.92
+    lon: 143.20
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: ATLAS
+  - name: Dubai-UAE
+    lat: 25.08
+    lon: 55.31
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: ATLAS
+  - name: Alice-Springs-AU
+    lat: -23.70
+    lon: 133.88
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: ATLAS
+  - name: Awarua-NZ
+    lat: -46.53
+    lon: 168.37
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: ATLAS
+  # Africa
+  - name: Accra-Ghana
+    lat: 5.56
+    lon: -0.19
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: ATLAS
+  - name: Mwulire-Rwanda
+    lat: -1.94
+    lon: 30.06
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: ATLAS
+  - name: Pretoria-South-Africa
+    lat: -25.75
+    lon: 28.19
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: ATLAS
+  # South America
+  - name: Cordoba-Argentina
+    lat: -31.42
+    lon: -64.18
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: ATLAS
+  - name: Ushuaia-Argentina
+    lat: -54.81
+    lon: -68.31
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: ATLAS
+
+imaging_modes:
+  - name: "Panchromatic"
+    fov_half_angle_deg: 2.5
+    collect_dwell_time_s: 5.0
+    collection_rate_gbps: 2.0
+    processing_time_min: 30.0
+    off_nadir_min_deg: 0.0
+    off_nadir_max_deg: 60.0
+  - name: "Multispectral"
+    fov_half_angle_deg: 3.5
+    collect_dwell_time_s: 8.0
+    collection_rate_gbps: 1.5
+    processing_time_min: 45.0
+    off_nadir_min_deg: 0.0
+    off_nadir_max_deg: 60.0
+
+targets:
+  geojson_path: "targets/target_aoi_deck_europe.geojson"
+  use_grid: false
+
+slew_rate_deg_per_s: 1.0
+mode_switch_time_s: 30.0
+contact_buffer_s: 30.0
+min_access_duration_s: 30.0
+access_merge_buffer_s: 240.0
+downlink_search_hours: 4.0
+
+output_dir: "results/viasat_rte_atlas_europe"
+excel_filename: "viasat_rte_atlas_europe.xlsx"
+ppt_filename: "viasat_rte_atlas_europe.pptx"
+plots_subdir: "plots"
+
+plot_dpi: 300
+plot_figsize: [15, 10]
+land_color: "#fafaf9"
+ocean_color: "#d4dbdc"
+border_color: "#ebd6d9"
+
+optimization:
+  enabled: false
+
+propulsion:
+  enabled: true
+  spacecraft:
+    dry_mass_kg: 500
+    cross_section_m2: 2.0
+    drag_coefficient: 2.2
+  thruster_preset: "BHT-600"
+  atmosphere:
+    solar_activity_f107: 150
+  margin_factor: 1.5

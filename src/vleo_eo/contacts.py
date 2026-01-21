@@ -1,5 +1,5 @@
 """
-Ground station contact window calculations and TTNC (Time To Next Contact) metrics.
+Ground station contact window calculations and payload downlink delay metrics.
 
 Handles communication cone geometry, contact finding, and downlink scheduling.
 """
@@ -17,7 +17,7 @@ from shapely.prepared import prep
 from skyfield.api import load, EarthSatellite, wgs84
 
 from .orbits import TLEData
-from .config import GroundStationConfig, ImagingModeConfig
+from .config import GroundStationConfig, ImagingModeConfig, AnalysisConfig
 
 
 def calculate_ground_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -259,6 +259,7 @@ def calculate_raw_contact_windows(
     tle_data: Dict[int, TLEData],
     ground_stations: List[GroundStationConfig],
     config: 'AnalysisConfig',
+    use_ka_elevation: bool = False,
 ) -> pd.DataFrame:
     """
     Calculate all contact windows for satellites and ground stations.
@@ -273,15 +274,18 @@ def calculate_raw_contact_windows(
         Ground station configurations.
     config : AnalysisConfig
         Analysis configuration.
+    use_ka_elevation : bool
+        If True, use Ka-band elevation mask; otherwise use S/X-band mask.
 
     Returns
     -------
     pd.DataFrame
         Contact windows with columns: sat_id, gs_name, contact_start, contact_end.
     """
-    from .config import AnalysisConfig
-
     ts = load.timescale()
+
+    # Get elevation mask based on band
+    min_elevation_deg = config.min_elevation_ka_deg if use_ka_elevation else config.min_elevation_sx_deg
 
     # Generate time samples
     start_dt = config.start_datetime
@@ -308,7 +312,7 @@ def calculate_raw_contact_windows(
         for gs in ground_stations:
             # Use distance-based validation for accurate contact detection
             sat_alt_km = tle.altitude_km
-            max_range_km = calculate_comm_range_km(gs.min_elevation_deg, sat_alt_km)
+            max_range_km = calculate_comm_range_km(min_elevation_deg, sat_alt_km)
 
             # Calculate distance from each satellite position to ground station
             in_range = np.zeros(len(lats), dtype=bool)
@@ -416,7 +420,8 @@ def calculate_contact_windows(
     slew_rate_deg_per_s: float = 0.6,
     mode_switch_time_s: float = 60.0,
     contact_buffer_s: float = 30.0,
-    ttnc_max_search_hours: float = 3.0,
+    downlink_search_hours: float = 3.0,
+    config: Optional[AnalysisConfig] = None,
 ) -> Dict[str, pd.DataFrame]:
     """
     Calculate contact windows and delivery timelines for all imaging modes.
@@ -437,16 +442,24 @@ def calculate_contact_windows(
         Mode switch time in seconds.
     contact_buffer_s : float
         Buffer time for contact validation.
-    ttnc_max_search_hours : float
-        Maximum search window for TTNC in hours.
+    downlink_search_hours : float
+        Maximum search window for downlink delay in hours.
+    config : AnalysisConfig, optional
+        Analysis configuration for per-band elevation masks.
 
     Returns
     -------
     Dict[str, pd.DataFrame]
         Dictionary mapping imaging mode names to processed DataFrames.
     """
+    # Get elevation masks (use config values or defaults)
+    min_elevation_sx_deg = config.min_elevation_sx_deg if config else 5.0
+    min_elevation_ka_deg = config.min_elevation_ka_deg if config else 10.0
+
     # Pre-compute communication cones for each ground station and satellite
-    comm_cones = {}
+    # Separate cones for S/X-band (TT&C) and Ka-band (payload downlink)
+    comm_cones_sx = {}  # S/X-band cones
+    comm_cones_ka = {}  # Ka-band cones
     gs_gdf_data = []
 
     for gs in ground_stations:
@@ -455,7 +468,8 @@ def calculate_contact_windows(
             'lat': gs.lat,
             'lon': gs.lon,
             'geometry': Point(gs.lon, gs.lat),
-            'min_elevation_deg': gs.min_elevation_deg,
+            'min_elevation_sx_deg': min_elevation_sx_deg,
+            'min_elevation_ka_deg': min_elevation_ka_deg,
             'ka_capable': gs.ka_capable,
             'downlink_rate_mbps': gs.downlink_rate_mbps,
         })
@@ -464,8 +478,16 @@ def calculate_contact_windows(
             if sat_id not in tle_data:
                 continue
             sat_alt_m = tle_data[sat_id].altitude_km * 1000
-            cone = create_communication_cone(gs.lon, gs.lat, gs.min_elevation_deg, sat_alt_m)
-            comm_cones[(gs.name, sat_id)] = cone
+
+            # Create S/X-band cone (for TT&C contacts)
+            if gs.ttc_capable:
+                cone_sx = create_communication_cone(gs.lon, gs.lat, min_elevation_sx_deg, sat_alt_m)
+                comm_cones_sx[(gs.name, sat_id)] = cone_sx
+
+            # Create Ka-band cone (for payload downlink)
+            if gs.ka_capable:
+                cone_ka = create_communication_cone(gs.lon, gs.lat, min_elevation_ka_deg, sat_alt_m)
+                comm_cones_ka[(gs.name, sat_id)] = cone_ka
 
     gs_gdf = gpd.GeoDataFrame(gs_gdf_data, crs='EPSG:4326')
 
@@ -541,16 +563,25 @@ def calculate_contact_windows(
             for gs in ground_stations:
                 try:
                     cone_key = (gs.name, sat_id)
-                    if cone_key not in comm_cones:
+
+                    # Use Ka-band cone and elevation for Ka-capable stations (payload downlink)
+                    # Otherwise use S/X-band cone for TT&C contacts
+                    if gs.ka_capable and cone_key in comm_cones_ka:
+                        comm_cone = comm_cones_ka[cone_key]
+                        elevation_deg = min_elevation_ka_deg
+                    elif gs.ttc_capable and cone_key in comm_cones_sx:
+                        comm_cone = comm_cones_sx[cone_key]
+                        elevation_deg = min_elevation_sx_deg
+                    else:
                         continue
 
                     contact_start, contact_end = find_next_contact(
                         tle_data, sat_id, slew_stop_dt,
-                        comm_cones[cone_key],
-                        max_search_time=timedelta(hours=ttnc_max_search_hours),
+                        comm_cone,
+                        max_search_time=timedelta(hours=downlink_search_hours),
                         gs_lat=gs.lat,
                         gs_lon=gs.lon,
-                        min_elevation_deg=gs.min_elevation_deg,
+                        min_elevation_deg=elevation_deg,
                     )
 
                     if contact_start is not None:
@@ -594,12 +625,15 @@ def calculate_contact_windows(
     return mode_dfs
 
 
-def calculate_ttnc_ka(
+def calculate_downlink_delay(
     mode_dfs: Dict[str, pd.DataFrame],
     ground_stations: List[GroundStationConfig],
 ) -> pd.DataFrame:
     """
-    Calculate Time To Next Ka Contact (TTNC) for each collection event.
+    Calculate payload downlink delay for each collection event.
+
+    Measures the time from collection end to first available Ka-band
+    downlink opportunity.
 
     Parameters
     ----------
@@ -611,7 +645,7 @@ def calculate_ttnc_ka(
     Returns
     -------
     pd.DataFrame
-        DataFrame with TTNC metrics for each collection.
+        DataFrame with downlink delay metrics for each collection.
     """
     ka_stations = [gs.name for gs in ground_stations if gs.ka_capable]
 
@@ -619,7 +653,7 @@ def calculate_ttnc_ka(
         warnings.warn("No Ka-capable ground stations configured")
         return pd.DataFrame()
 
-    ttnc_records = []
+    delay_records = []
 
     for mode_name, df in mode_dfs.items():
         for idx, row in df.iterrows():
@@ -639,13 +673,13 @@ def calculate_ttnc_ka(
                         earliest_ka_contact = contact_start
                         earliest_ka_station = gs_name
 
-            # Calculate TTNC
+            # Calculate downlink delay
             if earliest_ka_contact is not None and pd.notna(collect_end):
-                ttnc_seconds = (earliest_ka_contact - collect_end).total_seconds()
+                delay_seconds = (earliest_ka_contact - collect_end).total_seconds()
             else:
-                ttnc_seconds = np.nan
+                delay_seconds = np.nan
 
-            ttnc_records.append({
+            delay_records.append({
                 'Access_ID': idx,
                 'Imaging_Mode': mode_name,
                 'Satellite': row['Satellite'],
@@ -654,21 +688,25 @@ def calculate_ttnc_ka(
                 'AOI_Lon': row['AOI_Lon'],
                 'Next_Ka_Contact_Start': earliest_ka_contact,
                 'Next_Ka_Station': earliest_ka_station,
-                'TTNC_Ka_seconds': ttnc_seconds,
-                'TTNC_Ka_minutes': ttnc_seconds / 60 if pd.notna(ttnc_seconds) else np.nan,
+                'Downlink_Delay_seconds': delay_seconds,
+                'Downlink_Delay_minutes': delay_seconds / 60 if pd.notna(delay_seconds) else np.nan,
             })
 
-    ttnc_df = pd.DataFrame(ttnc_records)
+    delay_df = pd.DataFrame(delay_records)
 
     # Calculate summary statistics
-    if not ttnc_df.empty and not ttnc_df['TTNC_Ka_minutes'].isna().all():
-        print("\nTTNC Ka Statistics (minutes):")
-        print(f"  Median: {ttnc_df['TTNC_Ka_minutes'].median():.1f}")
-        print(f"  P90: {ttnc_df['TTNC_Ka_minutes'].quantile(0.90):.1f}")
-        print(f"  P95: {ttnc_df['TTNC_Ka_minutes'].quantile(0.95):.1f}")
-        print(f"  Missing: {ttnc_df['TTNC_Ka_minutes'].isna().sum()}/{len(ttnc_df)}")
+    if not delay_df.empty and not delay_df['Downlink_Delay_minutes'].isna().all():
+        print("\nPayload Downlink Delay Statistics (minutes):")
+        print(f"  Median: {delay_df['Downlink_Delay_minutes'].median():.1f}")
+        print(f"  P90: {delay_df['Downlink_Delay_minutes'].quantile(0.90):.1f}")
+        print(f"  P95: {delay_df['Downlink_Delay_minutes'].quantile(0.95):.1f}")
+        print(f"  Missing: {delay_df['Downlink_Delay_minutes'].isna().sum()}/{len(delay_df)}")
 
-    return ttnc_df
+    return delay_df
+
+
+# Backward compatibility alias
+calculate_ttnc_ka = calculate_downlink_delay
 
 
 def validate_contacts(
@@ -728,20 +766,20 @@ def validate_contacts(
         if count == 0:
             results['warnings'].append(f"No valid contacts for station {gs_name}")
 
-    # Check TTNC values are non-negative
+    # Check downlink delay values are non-negative
     for mode_name, df in mode_dfs.items():
         for gs in ground_stations:
             contact_start_col = f'Next_{gs.name}_Contact_Start'
             if contact_start_col in df.columns:
-                # Check for any negative TTNC (contact before slew stop)
+                # Check for any negative delay (contact before slew stop)
                 slew_stop = pd.to_datetime(df['Slew_Stop'])
                 contact_start = pd.to_datetime(df[contact_start_col])
                 valid_mask = slew_stop.notna() & contact_start.notna()
                 if valid_mask.any():
-                    negative_ttnc = (contact_start[valid_mask] < slew_stop[valid_mask]).sum()
-                    if negative_ttnc > 0:
+                    negative_delay = (contact_start[valid_mask] < slew_stop[valid_mask]).sum()
+                    if negative_delay > 0:
                         results['errors'].append(
-                            f"Found {negative_ttnc} negative TTNC values for {gs.name} in {mode_name}"
+                            f"Found {negative_delay} negative downlink delay values for {gs.name} in {mode_name}"
                         )
                         results['passed'] = False
 

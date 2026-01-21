@@ -701,82 +701,18 @@ def plot_delivery_timeline(
     return figures
 
 
-def plot_backlog_timeseries(
-    backlog_df: pd.DataFrame,
+def plot_downlink_delay_distribution(
+    downlink_delay_df: pd.DataFrame,
     config: AnalysisConfig,
     output_path: Optional[Path] = None,
 ) -> plt.Figure:
     """
-    Plot data backlog over time.
+    Plot payload downlink delay distribution.
 
     Parameters
     ----------
-    backlog_df : pd.DataFrame
-        Backlog time series from simulate_backlog.
-    config : AnalysisConfig
-        Analysis configuration.
-    output_path : Path, optional
-        Path to save the figure.
-
-    Returns
-    -------
-    plt.Figure
-        The matplotlib figure.
-    """
-    fig, axes = plt.subplots(2, 1, figsize=(14, 10), sharex=True)
-
-    # Plot 1: Backlog over time
-    ax1 = axes[0]
-    ax1.fill_between(backlog_df['Time'], backlog_df['Backlog_GB'],
-                     alpha=0.5, color='#1f77b4')
-    ax1.plot(backlog_df['Time'], backlog_df['Backlog_GB'],
-             color='#1f77b4', linewidth=1)
-    ax1.set_ylabel('Backlog (GB)')
-    ax1.set_title('Data Backlog Over Time')
-    ax1.grid(True, alpha=0.3)
-
-    # Add peak backlog annotation
-    peak_idx = backlog_df['Backlog_GB'].idxmax()
-    peak_time = backlog_df.loc[peak_idx, 'Time']
-    peak_value = backlog_df.loc[peak_idx, 'Backlog_GB']
-    ax1.annotate(f'Peak: {peak_value:.1f} GB',
-                 xy=(peak_time, peak_value),
-                 xytext=(10, 10), textcoords='offset points',
-                 arrowprops=dict(arrowstyle='->', color='red'),
-                 color='red')
-
-    # Plot 2: Cumulative collections and downlinks
-    ax2 = axes[1]
-    ax2.plot(backlog_df['Time'], backlog_df['Cumulative_Collections_GB'],
-             label='Cumulative Collections', color='#2ca02c', linewidth=2)
-    ax2.plot(backlog_df['Time'], backlog_df['Cumulative_Downlinked_GB'],
-             label='Cumulative Downlinked', color='#d62728', linewidth=2)
-    ax2.set_xlabel('Time')
-    ax2.set_ylabel('Data Volume (GB)')
-    ax2.set_title('Cumulative Data Collection and Downlink')
-    ax2.legend()
-    ax2.grid(True, alpha=0.3)
-
-    plt.tight_layout()
-
-    if output_path:
-        fig.savefig(output_path, dpi=config.plot_dpi, bbox_inches='tight')
-
-    return fig
-
-
-def plot_ttnc_distribution(
-    ttnc_df: pd.DataFrame,
-    config: AnalysisConfig,
-    output_path: Optional[Path] = None,
-) -> plt.Figure:
-    """
-    Plot TTNC (Time To Next Contact) distribution.
-
-    Parameters
-    ----------
-    ttnc_df : pd.DataFrame
-        TTNC DataFrame from calculate_ttnc_ka.
+    downlink_delay_df : pd.DataFrame
+        Downlink delay DataFrame from calculate_downlink_delay.
     config : AnalysisConfig
         Analysis configuration.
     output_path : Path, optional
@@ -789,37 +725,37 @@ def plot_ttnc_distribution(
     """
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
-    if ttnc_df.empty or ttnc_df['TTNC_Ka_minutes'].isna().all():
+    if downlink_delay_df.empty or downlink_delay_df['Downlink_Delay_minutes'].isna().all():
         for ax in axes:
-            ax.text(0.5, 0.5, 'No TTNC data available', ha='center', va='center')
+            ax.text(0.5, 0.5, 'No downlink delay data available', ha='center', va='center')
         return fig
 
-    valid_ttnc = ttnc_df['TTNC_Ka_minutes'].dropna()
+    valid_delay = downlink_delay_df['Downlink_Delay_minutes'].dropna()
 
     # Plot 1: Histogram
     ax1 = axes[0]
-    ax1.hist(valid_ttnc, bins=30, color='#1f77b4', edgecolor='black', alpha=0.7)
-    ax1.axvline(valid_ttnc.median(), color='red', linestyle='--',
-                label=f'Median: {valid_ttnc.median():.1f} min')
-    ax1.axvline(valid_ttnc.quantile(0.95), color='orange', linestyle='--',
-                label=f'P95: {valid_ttnc.quantile(0.95):.1f} min')
-    ax1.set_xlabel('Time to Next Ka Contact (minutes)')
+    ax1.hist(valid_delay, bins=30, color='#1f77b4', edgecolor='black', alpha=0.7)
+    ax1.axvline(valid_delay.median(), color='red', linestyle='--',
+                label=f'Median: {valid_delay.median():.1f} min')
+    ax1.axvline(valid_delay.quantile(0.95), color='orange', linestyle='--',
+                label=f'P95: {valid_delay.quantile(0.95):.1f} min')
+    ax1.set_xlabel('Payload Downlink Delay (minutes)')
     ax1.set_ylabel('Count')
-    ax1.set_title('TTNC Ka Distribution')
+    ax1.set_title('Downlink Delay Distribution')
     ax1.legend()
 
     # Plot 2: Box plot by imaging mode
     ax2 = axes[1]
-    modes = ttnc_df['Imaging_Mode'].unique()
-    data_by_mode = [ttnc_df[ttnc_df['Imaging_Mode'] == m]['TTNC_Ka_minutes'].dropna()
+    modes = downlink_delay_df['Imaging_Mode'].unique()
+    data_by_mode = [downlink_delay_df[downlink_delay_df['Imaging_Mode'] == m]['Downlink_Delay_minutes'].dropna()
                     for m in modes]
     data_by_mode = [d for d in data_by_mode if len(d) > 0]
 
     if data_by_mode:
         bp = ax2.boxplot(data_by_mode, labels=[m for m, d in zip(modes, data_by_mode) if len(d) > 0])
         ax2.set_xlabel('Imaging Mode')
-        ax2.set_ylabel('Time to Next Ka Contact (minutes)')
-        ax2.set_title('TTNC Ka by Imaging Mode')
+        ax2.set_ylabel('Payload Downlink Delay (minutes)')
+        ax2.set_title('Downlink Delay by Imaging Mode')
         ax2.tick_params(axis='x', rotation=45)
 
     plt.tight_layout()
@@ -828,3 +764,7 @@ def plot_ttnc_distribution(
         fig.savefig(output_path, dpi=config.plot_dpi, bbox_inches='tight')
 
     return fig
+
+
+# Backward compatibility alias
+plot_ttnc_distribution = plot_downlink_delay_distribution

@@ -41,6 +41,116 @@
       "type": "Feature",
       "properties": {"name": "Kuwait City", "country": "Kuwait"},
       "geometry": {"type": "Point", "coordinates": [47.9, 29.4]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Muscat", "country": "Oman"},
+      "geometry": {"type": "Point", "coordinates": [58.4, 23.6]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Manama", "country": "Bahrain"},
+      "geometry": {"type": "Point", "coordinates": [50.6, 26.2]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Jerusalem", "country": "Israel"},
+      "geometry": {"type": "Point", "coordinates": [35.2, 31.8]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Beirut", "country": "Lebanon"},
+      "geometry": {"type": "Point", "coordinates": [35.5, 33.9]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Baghdad", "country": "Iraq"},
+      "geometry": {"type": "Point", "coordinates": [44.4, 33.3]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Tehran", "country": "Iran"},
+      "geometry": {"type": "Point", "coordinates": [51.4, 35.7]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Jeddah", "country": "Saudi Arabia"},
+      "geometry": {"type": "Point", "coordinates": [39.2, 21.5]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Mecca", "country": "Saudi Arabia"},
+      "geometry": {"type": "Point", "coordinates": [39.8, 21.4]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Medina", "country": "Saudi Arabia"},
+      "geometry": {"type": "Point", "coordinates": [39.6, 24.5]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Dammam", "country": "Saudi Arabia"},
+      "geometry": {"type": "Point", "coordinates": [50.1, 26.4]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Sharjah", "country": "United Arab Emirates"},
+      "geometry": {"type": "Point", "coordinates": [55.4, 25.3]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Ankara", "country": "Turkey"},
+      "geometry": {"type": "Point", "coordinates": [32.9, 39.9]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Istanbul", "country": "Turkey"},
+      "geometry": {"type": "Point", "coordinates": [29.0, 41.0]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Erbil", "country": "Iraq"},
+      "geometry": {"type": "Point", "coordinates": [44.0, 36.2]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Basra", "country": "Iraq"},
+      "geometry": {"type": "Point", "coordinates": [47.8, 30.5]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Isfahan", "country": "Iran"},
+      "geometry": {"type": "Point", "coordinates": [51.7, 32.6]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Shiraz", "country": "Iran"},
+      "geometry": {"type": "Point", "coordinates": [52.5, 29.6]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Tabriz", "country": "Iran"},
+      "geometry": {"type": "Point", "coordinates": [46.3, 38.1]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Mashhad", "country": "Iran"},
+      "geometry": {"type": "Point", "coordinates": [59.6, 36.3]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Alexandria", "country": "Egypt"},
+      "geometry": {"type": "Point", "coordinates": [29.9, 31.2]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Izmir", "country": "Turkey"},
+      "geometry": {"type": "Point", "coordinates": [27.1, 38.4]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Antalya", "country": "Turkey"},
+      "geometry": {"type": "Point", "coordinates": [30.7, 36.9]}
     }
   ]
 }

@@ -29,12 +29,12 @@ from .contacts import (
     create_communication_cone,
     find_next_contact,
     calculate_contact_windows,
-    calculate_ttnc_ka,
+    calculate_downlink_delay,
+    calculate_ttnc_ka,  # Backward compatibility alias
     calculate_raw_contact_windows,
 )
 from .data_model import (
     calculate_data_volume,
-    simulate_backlog,
 )
 from .plots import (
     plot_ground_tracks,
@@ -43,8 +43,8 @@ from .plots import (
     plot_access_statistics,
     plot_contact_validity,
     plot_delivery_timeline,
-    plot_backlog_timeseries,
-    plot_ttnc_distribution,
+    plot_downlink_delay_distribution,
+    plot_ttnc_distribution,  # Backward compatibility alias
 )
 from .reports import (
     generate_excel_report,
@@ -64,4 +64,14 @@ from .ground_station_db import (
     get_ttc_capable_stations,
     get_ka_capable_stations,
     get_all_providers,
+)
+from .comparison import (
+    ComparisonResult,
+    load_comparison_results,
+    load_comparison_result,
+    load_raw_delay_data,
+    comparison_to_dataframe,
+    generate_comparison_excel,
+    PROVIDER_COLORS,
+    get_provider_color,
 )

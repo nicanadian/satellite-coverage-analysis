@@ -138,8 +138,12 @@ class AnalysisConfig:
     min_access_duration_s: float = 45.0
     access_merge_buffer_s: float = 240.0  # 4 minutes
 
-    # TTNC search window
-    ttnc_max_search_hours: float = 3.0
+    # Payload downlink delay search window (max time to search for next Ka contact)
+    downlink_search_hours: float = 3.0
+
+    # Elevation masks per band
+    min_elevation_sx_deg: float = 5.0   # S-band and X-band (TT&C)
+    min_elevation_ka_deg: float = 10.0  # Ka-band (payload downlink)
 
     # Output paths
     output_dir: str = "results"
@@ -301,7 +305,9 @@ def load_config(config_path: str) -> AnalysisConfig:
         contact_buffer_s=data.get('contact_buffer_s', 30.0),
         min_access_duration_s=data.get('min_access_duration_s', 45.0),
         access_merge_buffer_s=data.get('access_merge_buffer_s', 240.0),
-        ttnc_max_search_hours=data.get('ttnc_max_search_hours', 3.0),
+        downlink_search_hours=data.get('downlink_search_hours', data.get('ttnc_max_search_hours', 3.0)),
+        min_elevation_sx_deg=data.get('min_elevation_sx_deg', 5.0),
+        min_elevation_ka_deg=data.get('min_elevation_ka_deg', 10.0),
         output_dir=data.get('output_dir', 'results'),
         excel_filename=data.get('excel_filename', 'results_summary.xlsx'),
         ppt_filename=data.get('ppt_filename', 'results_summary.pptx'),
@@ -397,7 +403,9 @@ def save_config(config: AnalysisConfig, config_path: str) -> None:
         'contact_buffer_s': config.contact_buffer_s,
         'min_access_duration_s': config.min_access_duration_s,
         'access_merge_buffer_s': config.access_merge_buffer_s,
-        'ttnc_max_search_hours': config.ttnc_max_search_hours,
+        'downlink_search_hours': config.downlink_search_hours,
+        'min_elevation_sx_deg': config.min_elevation_sx_deg,
+        'min_elevation_ka_deg': config.min_elevation_ka_deg,
         'output_dir': config.output_dir,
         'excel_filename': config.excel_filename,
         'ppt_filename': config.ppt_filename,
