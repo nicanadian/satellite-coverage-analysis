@@ -1,0 +1,193 @@
+# KSAT 3-Satellite Global Configuration
+# 3 satellites, 250km SSO, 30-day analysis, Global targets
+# KSAT (Kongsberg Satellite Services) ground station network only
+
+start_date: "2027-02-15"
+duration_days: 30
+time_step_s: 10.0
+
+orbit:
+  ltdn_hours: 10.5
+  auto_sso: true
+  no_drag: true  # Constant altitude (no atmospheric decay)
+
+# 3-satellite constellation - SSO at 250km with different LTDNs
+satellites:
+  - sat_id: 1
+    inclination_deg: 96.6
+    altitude_km: 250
+    raan_deg: 0        # LTDN 10:30
+  - sat_id: 2
+    inclination_deg: 96.6
+    altitude_km: 250
+    raan_deg: -7.5     # LTDN 10:00 (0.5h earlier = -7.5 deg RAAN)
+  - sat_id: 3
+    inclination_deg: 96.6
+    altitude_km: 250
+    raan_deg: 7.5      # LTDN 11:00 (0.5h later = +7.5 deg RAAN)
+
+# Downlink parameters
+image_size_gb: 6.0
+downlink_rate_mbps: 800
+
+# Elevation masks
+min_elevation_sx_deg: 5.0   # S-band and X-band
+min_elevation_ka_deg: 10.0  # Ka-band
+
+# KSAT ground station network (14 stations)
+ground_stations:
+  # Polar Stations (critical for LEO coverage)
+  - name: KSAT-Svalbard-SvalSat
+    lat: 78.23
+    lon: 15.41
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: KSAT
+  - name: KSAT-Troll-Antarctica
+    lat: -72.01
+    lon: 2.53
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+  # North America
+  - name: KSAT-Prudhoe-Bay-AK
+    lat: 70.2
+    lon: -148.473
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+  - name: KSAT-Inuvik-Canada
+    lat: 68.36
+    lon: -133.72
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+  # South America
+  - name: KSAT-Punta-Arenas-CL
+    lat: -52.94
+    lon: -70.87
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: KSAT
+  # Europe
+  - name: KSAT-Tromso-Norway
+    lat: 69.65
+    lon: 18.96
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+  - name: KSAT-Athens-Greece
+    lat: 38.05
+    lon: 23.86
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+  - name: KSAT-Puertollano-Spain
+    lat: 38.68
+    lon: -4.11
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: KSAT
+  # Asia-Pacific
+  - name: KSAT-Singapore
+    lat: 1.35
+    lon: 103.82
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+  - name: KSAT-Jeju-South-Korea
+    lat: 33.39
+    lon: 126.31
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+  - name: KSAT-Mingenew-Australia
+    lat: -29.0
+    lon: 115.3
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+  - name: KSAT-Mauritius
+    lat: -20.17
+    lon: 57.50
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+  - name: KSAT-Awarua-NZ
+    lat: -46.53
+    lon: 168.37
+    s_band: true
+    x_band: true
+    ka_band: true
+    provider: KSAT
+  - name: KSAT-Hartebeesthoek-ZA
+    lat: -25.89
+    lon: 27.69
+    s_band: true
+    x_band: true
+    ka_band: false
+    provider: KSAT
+
+imaging_modes:
+  - name: "Panchromatic"
+    fov_half_angle_deg: 2.5
+    collect_dwell_time_s: 5.0
+    collection_rate_gbps: 2.0
+    processing_time_min: 30.0
+    off_nadir_min_deg: 0.0
+    off_nadir_max_deg: 60.0
+  - name: "Multispectral"
+    fov_half_angle_deg: 3.5
+    collect_dwell_time_s: 8.0
+    collection_rate_gbps: 1.5
+    processing_time_min: 45.0
+    off_nadir_min_deg: 0.0
+    off_nadir_max_deg: 60.0
+
+targets:
+  geojson_path: "targets/target_aoi_deck_global.geojson"
+  use_grid: false
+
+slew_rate_deg_per_s: 1.0
+mode_switch_time_s: 30.0
+contact_buffer_s: 30.0
+min_access_duration_s: 30.0
+access_merge_buffer_s: 240.0
+downlink_search_hours: 4.0
+
+output_dir: "results/ksat_3sat_global"
+excel_filename: "ksat_3sat_global.xlsx"
+ppt_filename: "ksat_3sat_global.pptx"
+plots_subdir: "plots"
+
+plot_dpi: 300
+plot_figsize: [15, 10]
+land_color: "#fafaf9"
+ocean_color: "#d4dbdc"
+border_color: "#ebd6d9"
+
+optimization:
+  enabled: false
+
+propulsion:
+  enabled: true
+  spacecraft:
+    dry_mass_kg: 500
+    cross_section_m2: 2.0
+    drag_coefficient: 2.2
+  thruster_preset: "BHT-600"
+  atmosphere:
+    solar_activity_f107: 150
+  margin_factor: 1.5
