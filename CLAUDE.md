@@ -12,12 +12,14 @@ Satellite coverage analysis tool that generates PowerPoint presentations with or
 # Activate virtual environment
 source sat-cov-env/bin/activate
 
-# Run analysis with a config
+# Run analysis with a config (ALWAYS generates full PowerPoint)
 python run_analysis.py --config configs/viasat_1sat_30d_apac.yaml
 
-# Skip PowerPoint generation (faster for testing)
+# Skip PowerPoint generation (ONLY use when explicitly requested by user)
 python run_analysis.py --config configs/viasat_1sat_30d_apac.yaml --skip-ppt
 ```
+
+**IMPORTANT**: Always generate the full PowerPoint presentation unless the user explicitly asks to skip it. The `--skip-ppt` flag should only be used for quick validation runs when specifically requested.
 
 ## Plot Styling Guidelines
 

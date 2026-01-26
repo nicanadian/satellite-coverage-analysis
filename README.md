@@ -98,17 +98,20 @@ source sat-cov-env/bin/activate
 
 ### Run Analysis
 
-Three baseline configurations are provided for different ground station networks:
+Configurations are provided for different ground station networks and target regions:
 
 ```bash
-# ViaSat RTE network only (10 stations)
-python run_analysis.py --config configs/viasat_rte_baseline.yaml
+# KSAT network - Global targets (14 stations)
+python run_analysis.py --config configs/ksat_global.yaml
 
-# ViaSat RTE + ATLAS Space combined (22 stations)
-python run_analysis.py --config configs/viasat_rte_atlas_baseline.yaml
+# ViaSat RTE network - Global targets (11 stations)
+python run_analysis.py --config configs/viasat_rte_global.yaml
 
-# KSAT network only (15 stations)
-python run_analysis.py --config configs/ksat_baseline.yaml
+# ViaSat RTE + ATLAS Space combined - Global targets (20 stations)
+python run_analysis.py --config configs/viasat_rte_atlas_global.yaml
+
+# APAC regional analysis
+python run_analysis.py --config configs/ksat_apac.yaml
 ```
 
 ### Additional Options
@@ -127,20 +130,23 @@ python run_analysis.py --config configs/ksat_baseline.yaml --output-dir results/
 python run_analysis.py --config configs/ksat_baseline.yaml -v
 ```
 
-## Baseline Configurations
+## Configuration Overview
 
-All baseline configs share these parameters:
-- **Satellite**: 1 satellite, 400 km SSO, 10:30 LTDN
+All configs share these base parameters:
+- **Satellite**: 1 satellite, 250 km SSO, 10:30 LTDN
 - **Analysis Period**: 30 days starting 2027-02-15
-- **Targets**: APAC target deck (`targets/target_aoi_deck_apac.geojson`)
-- **Image Size**: 3 GB
-- **Downlink Rate**: 1000 Mbps
+- **Image Size**: 6 GB
+- **Downlink Rate**: 800 Mbps
+- **No-Drag Mode**: Constant altitude propagation (no atmospheric decay)
 
-| Config | Ground Stations | Description |
-|--------|-----------------|-------------|
-| `viasat_rte_baseline.yaml` | 10 | ViaSat Real-Time Earth network |
-| `viasat_rte_atlas_baseline.yaml` | 22 | ViaSat RTE + ATLAS Space combined |
-| `ksat_baseline.yaml` | 15 | KSAT (Kongsberg Satellite Services) |
+| Config Pattern | Ground Stations | Description |
+|----------------|-----------------|-------------|
+| `ksat_*.yaml` | 14 | KSAT (Kongsberg Satellite Services) |
+| `viasat_rte_*.yaml` | 11 | ViaSat Real-Time Earth network |
+| `viasat_rte_atlas_*.yaml` | 20 | ViaSat RTE + ATLAS Space combined |
+
+**Regional variants**: `*_global.yaml`, `*_apac.yaml`, `*_europe.yaml`, `*_mideast.yaml`
+**Multi-satellite**: `*_3sat_global.yaml` configs for 3-satellite constellations
 
 ## Configuration
 
@@ -233,7 +239,10 @@ results/<config_name>/
 | Downlink_KPIs | Downlink statistics by GS |
 | Downlink_Delay | Payload downlink delay per collection |
 | Downlink_Delay_Summary | Downlink delay statistics by mode |
-| Propulsion_Analysis | Station-keeping propellant budget |
+| TTC_Coverage | TT&C contact statistics |
+| TTC_Gaps | Gap analysis between TT&C contacts |
+| Ka_Coverage | Ka-band downlink coverage analysis |
+| Optimization_Summary | Ground station optimization results |
 
 ## Package Structure
 
@@ -241,24 +250,33 @@ results/<config_name>/
 satellite-coverage-analysis/
 ├── run_analysis.py           # CLI entrypoint
 ├── configs/
-│   ├── viasat_rte_baseline.yaml
-│   ├── viasat_rte_atlas_baseline.yaml
-│   └── ksat_baseline.yaml
+│   ├── ksat_global.yaml      # KSAT network configs
+│   ├── ksat_apac.yaml
+│   ├── viasat_rte_global.yaml
+│   ├── viasat_rte_atlas_global.yaml
+│   └── ...                   # Regional and multi-sat variants
 ├── targets/
-│   └── target_aoi_deck_apac.geojson
+│   ├── target_aoi_deck_apac.geojson
+│   ├── target_aoi_deck_europe.geojson
+│   ├── target_aoi_deck_global.geojson
+│   └── target_aoi_deck_mideast.geojson
 ├── scripts/
 │   └── generate_full_presentation.py
 ├── src/
 │   └── vleo_eo/
 │       ├── __init__.py
 │       ├── config.py         # Configuration dataclasses
+│       ├── constants.py      # Physical constants (Earth radius, mu, etc.)
+│       ├── utils.py          # Shared utility functions
+│       ├── cache.py          # Caching layer for expensive computations
 │       ├── orbits.py         # TLE generation and propagation
 │       ├── coverage.py       # Access window calculation
 │       ├── contacts.py       # Ground station contacts
 │       ├── data_model.py     # Data volume modeling
 │       ├── plots.py          # Visualization functions
 │       ├── reports.py        # Excel report generation
-│       └── optimization.py   # Ground station optimization
+│       ├── optimization.py   # Ground station optimization
+│       └── comparison.py     # Multi-provider comparison tools
 └── results/                  # Output directory
 ```
 
@@ -358,9 +376,12 @@ source sat-cov-env/bin/activate
 
 ### Missing Target Files
 
-Ensure target GeoJSON files exist in the `targets/` directory. The baseline configs expect:
+Ensure target GeoJSON files exist in the `targets/` directory:
 ```
-targets/target_aoi_deck_apac.geojson
+targets/target_aoi_deck_apac.geojson    # APAC regional targets
+targets/target_aoi_deck_europe.geojson  # Europe regional targets
+targets/target_aoi_deck_global.geojson  # Global targets (128 points)
+targets/target_aoi_deck_mideast.geojson # Middle East regional targets
 ```
 
 ## License
