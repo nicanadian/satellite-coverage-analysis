@@ -1,0 +1,87 @@
+# Example: Mixed Ground Station Configuration
+# ============================================
+# This config loads ground stations from the centralized ground_stations.py file
+# instead of defining them inline. Edit ground_stations.py to toggle stations.
+#
+# You can also filter stations here without editing the Python file.
+
+start_date: "2027-02-15"
+duration_days: 30
+time_step_s: 10.0
+
+orbit:
+  ltdn_hours: 10.5
+  auto_sso: true
+  no_drag: true
+
+satellites:
+  - sat_id: 1
+    inclination_deg: 96.6
+    altitude_km: 250
+    raan_deg: 0
+
+# Downlink parameters
+image_size_gb: 6.0
+downlink_rate_mbps: 800
+
+# Elevation masks
+min_elevation_sx_deg: 5.0
+min_elevation_ka_deg: 10.0
+
+# =============================================================================
+# Ground stations from external file
+# =============================================================================
+# Option 1: Load ALL stations from the file (comment/uncomment in .py file)
+ground_stations_file: "ground_stations.py"
+
+# Option 2: Filter stations by provider (uncomment to use)
+# ground_stations_filter:
+#   providers: ["KSAT", "ATLAS"]  # Only these providers
+#   ka_band_only: false           # Set true for Ka-capable only
+#   exclude:                      # Exclude specific stations by name
+#     - "KSAT-Athens-Greece"
+#     - "ATLAS-Dundee-Scotland"
+
+# =============================================================================
+# Imaging modes
+# =============================================================================
+imaging_modes:
+  - name: "Panchromatic"
+    fov_half_angle_deg: 2.5
+    collect_dwell_time_s: 5.0
+    collection_rate_gbps: 2.0
+    processing_time_min: 30.0
+    off_nadir_min_deg: 0.0
+    off_nadir_max_deg: 60.0
+  - name: "Multispectral"
+    fov_half_angle_deg: 3.5
+    collect_dwell_time_s: 8.0
+    collection_rate_gbps: 1.5
+    processing_time_min: 45.0
+    off_nadir_min_deg: 0.0
+    off_nadir_max_deg: 60.0
+
+targets:
+  geojson_path: "targets/target_aoi_deck_global.geojson"
+  use_grid: false
+
+slew_rate_deg_per_s: 1.0
+mode_switch_time_s: 30.0
+contact_buffer_s: 30.0
+min_access_duration_s: 30.0
+access_merge_buffer_s: 240.0
+downlink_search_hours: 4.0
+
+output_dir: "results/mixed_stations"
+excel_filename: "mixed_stations.xlsx"
+ppt_filename: "mixed_stations.pptx"
+plots_subdir: "plots"
+
+plot_dpi: 300
+plot_figsize: [15, 10]
+land_color: "#fafaf9"
+ocean_color: "#d4dbdc"
+border_color: "#ebd6d9"
+
+optimization:
+  enabled: false

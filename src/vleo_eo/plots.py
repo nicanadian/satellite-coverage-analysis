@@ -5,19 +5,17 @@ Uses matplotlib + cartopy for geographic plots, with consistent styling
 from the original SAR notebook.
 """
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-from matplotlib.colors import LinearSegmentedColormap
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-from shapely.geometry import Point
 
 from .config import AnalysisConfig, GroundStationConfig
 from .orbits import TLEData, calculate_ground_track

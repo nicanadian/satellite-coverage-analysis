@@ -6,18 +6,17 @@ Handles target access computation, look angle calculations, and swath geometry.
 
 import json
 import warnings
-from datetime import datetime, timezone, timedelta
+from datetime import timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any, Union
+from typing import Dict, List, Optional, Tuple, Any
 
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-from pyproj import Geod
 from shapely.geometry import Point, Polygon, LineString
-from shapely.prepared import prep
 
 from .orbits import TLEData, calculate_ground_track
+from .constants import EARTH_RADIUS_KM
 
 
 def calculate_look_angle(
@@ -60,8 +59,7 @@ def calculate_look_angle(
     target_lat_rad = np.radians(target_lat)
     target_lon_rad = np.radians(target_lon)
 
-    # Earth radius in km
-    R = 6378.137
+    R = EARTH_RADIUS_KM
 
     # Great circle distance using Haversine formula
     dlat = sat_lats_rad - target_lat_rad
@@ -288,6 +286,168 @@ def calculate_swath_polygon(
         return None
 
 
+def _calculate_look_angles_vectorized(
+    sat_lats: np.ndarray,
+    sat_lons: np.ndarray,
+    sat_alts: np.ndarray,
+    target_lats: np.ndarray,
+    target_lons: np.ndarray,
+) -> np.ndarray:
+    """
+    Calculate look angles for multiple targets at multiple satellite positions.
+
+    Uses NumPy broadcasting for efficient computation.
+
+    Parameters
+    ----------
+    sat_lats : array, shape (N_epochs,)
+        Satellite latitudes in degrees.
+    sat_lons : array, shape (N_epochs,)
+        Satellite longitudes in degrees.
+    sat_alts : array, shape (N_epochs,)
+        Satellite altitudes in km.
+    target_lats : array, shape (N_targets,)
+        Target latitudes in degrees.
+    target_lons : array, shape (N_targets,)
+        Target longitudes in degrees.
+
+    Returns
+    -------
+    np.ndarray, shape (N_targets, N_epochs)
+        Look angles in degrees (NaN if beyond horizon).
+    """
+    # Reshape for broadcasting: targets along axis 0, epochs along axis 1
+    sat_lats = sat_lats[np.newaxis, :]  # (1, N_epochs)
+    sat_lons = sat_lons[np.newaxis, :]
+    sat_alts = sat_alts[np.newaxis, :]
+    target_lats = target_lats[:, np.newaxis]  # (N_targets, 1)
+    target_lons = target_lons[:, np.newaxis]
+
+    # Convert to radians
+    sat_lats_rad = np.radians(sat_lats)
+    sat_lons_rad = np.radians(sat_lons)
+    target_lats_rad = np.radians(target_lats)
+    target_lons_rad = np.radians(target_lons)
+
+    # Haversine formula for great-circle distance
+    dlat = sat_lats_rad - target_lats_rad
+    dlon = sat_lons_rad - target_lons_rad
+
+    a = np.sin(dlat / 2)**2 + np.cos(sat_lats_rad) * np.cos(target_lats_rad) * np.sin(dlon / 2)**2
+    c = 2 * np.arcsin(np.sqrt(a))
+    ground_distance = EARTH_RADIUS_KM * c  # (N_targets, N_epochs)
+
+    # Horizon distance for each epoch
+    horizon_distance = EARTH_RADIUS_KM * np.arccos(EARTH_RADIUS_KM / (EARTH_RADIUS_KM + sat_alts))
+
+    # Mask points beyond horizon
+    beyond_horizon = ground_distance > horizon_distance
+
+    # Calculate look angles
+    look_angles = np.degrees(np.arctan2(sat_alts, ground_distance))
+    look_angles = np.where(beyond_horizon, np.nan, look_angles)
+
+    return look_angles
+
+
+def _find_access_windows_for_target(
+    orbit_df: pd.DataFrame,
+    target_idx: int,
+    target_lat: float,
+    target_lon: float,
+    off_nadir_angles: np.ndarray,
+    off_nadir_min_deg: float,
+    off_nadir_max_deg: float,
+    min_access_duration_s: float,
+    pass_type: str,
+) -> Optional[pd.DataFrame]:
+    """
+    Find access windows for a single target given pre-computed off-nadir angles.
+
+    Internal helper for calculate_access_windows.
+    """
+    # Filter by off-nadir constraints
+    mask = (off_nadir_angles >= off_nadir_min_deg) & (off_nadir_angles <= off_nadir_max_deg)
+
+    if not mask.any():
+        return None
+
+    filtered_df = orbit_df.loc[mask].copy()
+    filtered_df['off_nadir_angle'] = off_nadir_angles[mask]
+
+    # Group consecutive points into overpasses
+    filtered_df = filtered_df.sort_values(['Satellite', 'Epoch'])
+    filtered_df['time_diff'] = filtered_df.groupby('Satellite')['Epoch'].diff()
+
+    # Detect overpass boundaries
+    median_step = filtered_df['time_diff'].median()
+    if pd.isna(median_step):
+        median_step = timedelta(seconds=10)
+
+    gap_threshold = median_step * 3
+    filtered_df['new_pass'] = (
+        (filtered_df['time_diff'] > gap_threshold) |
+        (filtered_df['time_diff'].isna())
+    )
+    filtered_df['Overpass'] = filtered_df.groupby('Satellite')['new_pass'].cumsum()
+
+    # Filter out single-point passes
+    pass_sizes = filtered_df.groupby(['Satellite', 'Overpass']).size()
+    valid_passes = pass_sizes[pass_sizes > 1].index
+    if valid_passes.empty:
+        return None
+
+    filtered_df = filtered_df.set_index(['Satellite', 'Overpass'])
+    filtered_df = filtered_df.loc[filtered_df.index.isin(valid_passes)].reset_index()
+
+    if filtered_df.empty:
+        return None
+
+    # Aggregate to get start/end times
+    overpass_agg = filtered_df.groupby(['Satellite', 'Overpass']).agg({
+        'Epoch': ['min', 'max'],
+        'off_nadir_angle': ['min', 'max'],
+        'Latitude': ['first', 'last'],
+        'Longitude': 'first',
+        'Altitude_km': 'mean',
+    }).reset_index()
+
+    overpass_agg.columns = [
+        'Satellite', 'Overpass', 'Start_Time', 'End_Time',
+        'OffNadir_Min', 'OffNadir_Max', 'Sat_Lat_Start', 'Sat_Lat_End', 'Sat_Lon', 'Altitude_km'
+    ]
+
+    # Determine pass direction
+    overpass_agg['Lat_Change'] = overpass_agg['Sat_Lat_End'] - overpass_agg['Sat_Lat_Start']
+    overpass_agg['Pass_Direction'] = np.where(
+        overpass_agg['Lat_Change'] < 0, 'descending', 'ascending'
+    )
+    overpass_agg['Sat_Lat'] = overpass_agg['Sat_Lat_Start']
+
+    overpass_agg['AOI_Lat'] = target_lat
+    overpass_agg['AOI_Lon'] = target_lon
+    overpass_agg['Access_Duration'] = (
+        overpass_agg['End_Time'] - overpass_agg['Start_Time']
+    ).dt.total_seconds()
+
+    # Filter by minimum duration
+    overpass_agg = overpass_agg[overpass_agg['Access_Duration'] >= min_access_duration_s]
+
+    # Filter by pass type
+    if pass_type == "descending":
+        overpass_agg = overpass_agg[overpass_agg['Pass_Direction'] == 'descending']
+    elif pass_type == "ascending":
+        overpass_agg = overpass_agg[overpass_agg['Pass_Direction'] == 'ascending']
+
+    if overpass_agg.empty:
+        return None
+
+    # Drop helper columns
+    overpass_agg = overpass_agg.drop(columns=['Sat_Lat_Start', 'Sat_Lat_End', 'Lat_Change'])
+
+    return overpass_agg
+
+
 def calculate_access_windows(
     orbit_df: pd.DataFrame,
     targets_gdf: gpd.GeoDataFrame,
@@ -298,6 +458,8 @@ def calculate_access_windows(
 ) -> pd.DataFrame:
     """
     Calculate target access windows from orbit data.
+
+    Uses vectorized computation for efficiency with many targets.
 
     Parameters
     ----------
@@ -320,98 +482,42 @@ def calculate_access_windows(
     pd.DataFrame
         DataFrame with access windows.
     """
+    if orbit_df.empty or targets_gdf.empty:
+        return pd.DataFrame()
+
+    # Extract satellite orbit arrays
+    sat_lats = orbit_df['Latitude'].values
+    sat_lons = orbit_df['Longitude'].values
+    sat_alts = orbit_df['Altitude_km'].values
+
+    # Extract target coordinates
+    target_lats = targets_gdf.geometry.y.values
+    target_lons = targets_gdf.geometry.x.values
+    n_targets = len(target_lats)
+
+    # Compute all look angles in one vectorized operation
+    # Shape: (N_targets, N_epochs)
+    look_angles = _calculate_look_angles_vectorized(
+        sat_lats, sat_lons, sat_alts, target_lats, target_lons
+    )
+    off_nadir_angles = 90 - look_angles  # (N_targets, N_epochs)
+
+    # Process each target using the pre-computed angles
     access_times = []
-
-    for idx, aoi in targets_gdf.iterrows():
-        target_lat = aoi.geometry.y
-        target_lon = aoi.geometry.x
-
-        # Calculate look angles for all orbit points
-        look_angles = calculate_look_angle(
-            orbit_df['Latitude'].values,
-            orbit_df['Longitude'].values,
-            orbit_df['Altitude_km'].values,
-            target_lat,
-            target_lon,
+    for i in range(n_targets):
+        result = _find_access_windows_for_target(
+            orbit_df,
+            i,
+            target_lats[i],
+            target_lons[i],
+            off_nadir_angles[i, :],  # Row for this target
+            off_nadir_min_deg,
+            off_nadir_max_deg,
+            min_access_duration_s,
+            pass_type,
         )
-
-        off_nadir_angles = 90 - look_angles
-
-        # Filter by off-nadir constraints
-        mask = (off_nadir_angles >= off_nadir_min_deg) & (off_nadir_angles <= off_nadir_max_deg)
-        filtered_df = orbit_df[mask].copy()
-        filtered_df['off_nadir_angle'] = off_nadir_angles[mask]
-
-        if filtered_df.empty:
-            continue
-
-        # Group consecutive points into overpasses
-        # Use time difference to detect gaps (more than 2x timestep = new pass)
-        filtered_df = filtered_df.sort_values(['Satellite', 'Epoch'])
-        filtered_df['time_diff'] = filtered_df.groupby('Satellite')['Epoch'].diff()
-
-        # Detect overpass boundaries
-        median_step = filtered_df['time_diff'].median()
-        if pd.isna(median_step):
-            median_step = timedelta(seconds=10)
-
-        gap_threshold = median_step * 3
-        filtered_df['new_pass'] = (
-            (filtered_df['time_diff'] > gap_threshold) |
-            (filtered_df['time_diff'].isna())
-        )
-        filtered_df['Overpass'] = filtered_df.groupby('Satellite')['new_pass'].cumsum()
-
-        # Filter out single-point passes
-        pass_sizes = filtered_df.groupby(['Satellite', 'Overpass']).size()
-        valid_passes = pass_sizes[pass_sizes > 1].index
-        filtered_df = filtered_df.set_index(['Satellite', 'Overpass'])
-        filtered_df = filtered_df.loc[filtered_df.index.isin(valid_passes)].reset_index()
-
-        if filtered_df.empty:
-            continue
-
-        # Aggregate to get start/end times
-        overpass_agg = filtered_df.groupby(['Satellite', 'Overpass']).agg({
-            'Epoch': ['min', 'max'],
-            'off_nadir_angle': ['min', 'max'],
-            'Latitude': ['first', 'last'],
-            'Longitude': 'first',
-            'Altitude_km': 'mean',
-        }).reset_index()
-
-        overpass_agg.columns = [
-            'Satellite', 'Overpass', 'Start_Time', 'End_Time',
-            'OffNadir_Min', 'OffNadir_Max', 'Sat_Lat_Start', 'Sat_Lat_End', 'Sat_Lon', 'Altitude_km'
-        ]
-
-        # Determine pass direction: descending = latitude decreasing (moving south)
-        overpass_agg['Lat_Change'] = overpass_agg['Sat_Lat_End'] - overpass_agg['Sat_Lat_Start']
-        overpass_agg['Pass_Direction'] = np.where(
-            overpass_agg['Lat_Change'] < 0, 'descending', 'ascending'
-        )
-        overpass_agg['Sat_Lat'] = overpass_agg['Sat_Lat_Start']  # Use start lat for compatibility
-
-        overpass_agg['AOI_Lat'] = target_lat
-        overpass_agg['AOI_Lon'] = target_lon
-        overpass_agg['Access_Duration'] = (
-            overpass_agg['End_Time'] - overpass_agg['Start_Time']
-        ).dt.total_seconds()
-
-        # Filter by minimum duration
-        overpass_agg = overpass_agg[overpass_agg['Access_Duration'] >= min_access_duration_s]
-
-        # Filter by pass type if specified
-        if pass_type == "descending":
-            overpass_agg = overpass_agg[overpass_agg['Pass_Direction'] == 'descending']
-        elif pass_type == "ascending":
-            overpass_agg = overpass_agg[overpass_agg['Pass_Direction'] == 'ascending']
-        # else "both" - keep all passes
-
-        # Drop helper columns
-        overpass_agg = overpass_agg.drop(columns=['Sat_Lat_Start', 'Sat_Lat_End', 'Lat_Change'])
-
-        access_times.append(overpass_agg)
+        if result is not None:
+            access_times.append(result)
 
     if not access_times:
         return pd.DataFrame()

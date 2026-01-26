@@ -266,6 +266,51 @@ def _parse_targets(data: Dict[str, Any]) -> TargetConfig:
     )
 
 
+def _load_ground_stations_from_file(file_path: str, filter_config: Dict[str, Any] = None) -> List[Dict]:
+    """
+    Load ground stations from a Python file.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to Python file containing GROUND_STATIONS list.
+    filter_config : dict, optional
+        Filtering options:
+        - providers: list of provider names to include
+        - ka_band_only: if True, only Ka-band capable stations
+        - exclude: list of station names to exclude
+
+    Returns
+    -------
+    List[Dict]
+        List of ground station dicts.
+    """
+    import importlib.util
+
+    # Load the Python module
+    spec = importlib.util.spec_from_file_location("ground_stations", file_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    # Get stations list
+    stations = list(module.GROUND_STATIONS)
+
+    # Apply filters if provided
+    if filter_config:
+        providers = filter_config.get('providers')
+        if providers:
+            stations = [s for s in stations if s.get('provider') in providers]
+
+        if filter_config.get('ka_band_only'):
+            stations = [s for s in stations if s.get('ka_band')]
+
+        exclude = filter_config.get('exclude', [])
+        if exclude:
+            stations = [s for s in stations if s.get('name') not in exclude]
+
+    return stations
+
+
 def load_config(config_path: str) -> AnalysisConfig:
     """
     Load configuration from a YAML file.
@@ -279,13 +324,43 @@ def load_config(config_path: str) -> AnalysisConfig:
     -------
     AnalysisConfig
         Parsed and validated configuration.
+
+    Notes
+    -----
+    Ground stations can be specified in two ways:
+
+    1. Inline in the YAML:
+        ground_stations:
+          - name: Station1
+            lat: 45.0
+            ...
+
+    2. From external Python file:
+        ground_stations_file: "configs/ground_stations.py"
+        ground_stations_filter:  # optional
+          providers: ["KSAT", "ATLAS"]
+          ka_band_only: false
+          exclude: ["KSAT-Athens-Greece"]
     """
+    config_dir = Path(config_path).parent
+
     with open(config_path, 'r') as f:
         data = yaml.safe_load(f)
 
     # Parse nested configs
     satellites = [_parse_satellite(s) for s in data.get('satellites', [])]
-    ground_stations = [_parse_ground_station(gs) for gs in data.get('ground_stations', [])]
+
+    # Load ground stations - either from file or inline
+    if 'ground_stations_file' in data:
+        gs_file = data['ground_stations_file']
+        # Resolve relative paths from config file location
+        if not Path(gs_file).is_absolute():
+            gs_file = str(config_dir / gs_file)
+        gs_filter = data.get('ground_stations_filter', {})
+        gs_data = _load_ground_stations_from_file(gs_file, gs_filter)
+        ground_stations = [_parse_ground_station(gs) for gs in gs_data]
+    else:
+        ground_stations = [_parse_ground_station(gs) for gs in data.get('ground_stations', [])]
     imaging_modes = [_parse_imaging_mode(m) for m in data.get('imaging_modes', [])]
     targets = _parse_targets(data.get('targets', {}))
     optimization = _parse_optimization(data.get('optimization', {}))

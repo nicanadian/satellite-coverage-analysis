@@ -4,10 +4,12 @@ Comparison Module for VLEO EO Coverage Analysis
 Load and compare results from multiple baseline configurations.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 import pandas as pd
+
+from .constants import PROVIDER_COLORS
 
 
 @dataclass
@@ -356,15 +358,6 @@ def generate_comparison_excel(
 
     print(f"  Comparison Excel saved to: {output_path}")
     return output_path
-
-
-# Provider color scheme for consistent visualizations
-# Order matters: more specific keys must come first for matching
-PROVIDER_COLORS = {
-    'ViaSat RTE + ATLAS': '#5DADE2',   # Light blue
-    'ViaSat RTE': '#F5B041',            # Light orange
-    'KSAT': '#BB8FCE',                  # Light purple
-}
 
 
 def get_provider_color(label: str) -> str:

@@ -1,24 +1,30 @@
 #!/usr/bin/env python3
 """
 Generate comprehensive PowerPoint presentation for satellite coverage analysis.
+
+Supports parallel plot generation for improved performance.
 """
 
 import sys
 import random
+import time
 from pathlib import Path
 from datetime import timedelta
 from typing import Dict, List, Tuple, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pyproj import Geod
 
 import numpy as np
 import pandas as pd
 import geopandas as gpd
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend for thread safety
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
+from matplotlib.colors import LinearSegmentedColormap
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN
@@ -28,6 +34,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.vleo_eo.orbits import create_tle_data, calculate_ground_track, ltdn_to_raan, calculate_sso_inclination
 from src.vleo_eo.contacts import calculate_comm_range_km, calculate_ground_distance_km
 from src.vleo_eo.config import load_config
+from src.vleo_eo.constants import EARTH_RADIUS_KM, EARTH_MU_KM3_S2
 
 
 def create_comm_cone_geodesic(lon: float, lat: float, min_elevation_deg: float, sat_altitude_km: float):
@@ -3042,7 +3049,11 @@ def main():
     parser.add_argument('--config', required=True, help='Path to config YAML')
     parser.add_argument('--results-dir', required=True, help='Path to results directory')
     parser.add_argument('--seed', type=int, default=42, help='Random seed')
+    parser.add_argument('--parallel', action='store_true', help='Generate plots in parallel')
+    parser.add_argument('--workers', type=int, default=4, help='Number of parallel workers')
     args = parser.parse_args()
+
+    start_time = time.time()
 
     config = load_config(args.config)
     results_dir = Path(args.results_dir)
@@ -3138,26 +3149,7 @@ def main():
         print(f"Warning: Could not load runtime stats: {e}")
         runtime_stats['total_accesses'] = len(access_df)
 
-    runtime_stats['processing_time'] = '~40 s'  # Approximate based on last run
-
-    # Generate all plots (Slide 1 is text-based, generated in build_presentation)
-    print("\nSlide 1: Mission Parameters (text-based, generated in PowerPoint)")
-
-    print("Generating Slide 3: Ground Stations and Targets...")
-    generate_slide2_gs_map(config, ground_stations, sat_alt_km, targets_gdf,
-                           plots_dir / 'slide2_ground_stations.png', excel_path=excel_path)
-
-    print("Generating Slide 3: Single Orbit...")
-    generate_slide3_single_orbit(tle_data, config, plots_dir / 'slide3_single_orbit.png')
-
-    print("Generating Slide 4: Access Results...")
-    generate_slide4_access_results(access_df, tle_data, plots_dir / 'slide4_access_results.png')
-
-    print("Generating Slide 5: Access with Comm Cones...")
-    generate_slide5_access_with_cones(access_df, tle_data, ground_stations, sat_alt_km,
-                                      plots_dir / 'slide5_access_with_cones.png')
-
-    # Select 3 random accesses
+    # Select 3 random accesses for detailed slides
     random.seed(args.seed)
     num_accesses = min(3, len(access_df))
     random_indices = random.sample(range(len(access_df)), num_accesses)
@@ -3166,38 +3158,90 @@ def main():
     off_nadir_min = config.imaging_modes[0].off_nadir_min_deg if config.imaging_modes else 0.0
     off_nadir_max = config.imaging_modes[0].off_nadir_max_deg if config.imaging_modes else 30.0
 
-    print(f"\nGenerating Slides 6-8: Broadside Collect (indices {random_indices})...")
+    # Define all plot generation tasks
+    plot_tasks = [
+        ('Ground Stations', generate_slide2_gs_map,
+         (config, ground_stations, sat_alt_km, targets_gdf, plots_dir / 'slide2_ground_stations.png'),
+         {'excel_path': excel_path}),
+        ('Single Orbit', generate_slide3_single_orbit,
+         (tle_data, config, plots_dir / 'slide3_single_orbit.png'), {}),
+        ('Access Results', generate_slide4_access_results,
+         (access_df, tle_data, plots_dir / 'slide4_access_results.png'), {}),
+        ('Access with Cones', generate_slide5_access_with_cones,
+         (access_df, tle_data, ground_stations, sat_alt_km, plots_dir / 'slide5_access_with_cones.png'), {}),
+        ('Downlink Delay Summary', generate_downlink_delay_summary_plot,
+         (excel_path, plots_dir / 'slide_downlink_delay_summary.png'), {}),
+        ('Uplink Summary', generate_uplink_to_collect_summary,
+         (access_df, tle_data, ground_stations, sat_alt_km, plots_dir / 'slide_uplink_summary.png'), {}),
+        ('Optimization', generate_optimization_slide,
+         (excel_path, plots_dir / 'slide_optimization.png', config), {}),
+    ]
+
+    # Add broadside collect tasks
     for i, idx in enumerate(random_indices):
-        generate_broadside_collect_plot(access_df.iloc[idx], tle_data, ground_stations, sat_alt_km,
-                                        plots_dir / f'slide_broadside_{i+1}.png',
-                                        off_nadir_min=off_nadir_min, off_nadir_max=off_nadir_max)
+        plot_tasks.append((
+            f'Broadside {i+1}', generate_broadside_collect_plot,
+            (access_df.iloc[idx], tle_data, ground_stations, sat_alt_km, plots_dir / f'slide_broadside_{i+1}.png'),
+            {'off_nadir_min': off_nadir_min, 'off_nadir_max': off_nadir_max}
+        ))
 
-    print("Generating Slides 10-12: 3h Post-Collect...")
+    # Add post-collect tasks
     for i, idx in enumerate(random_indices):
-        generate_collect_diagram_3h(access_df.iloc[idx], tle_data, ground_stations, sat_alt_km,
-                                    plots_dir / f'slide_postcollect_{i+1}.png')
+        plot_tasks.append((
+            f'Post-Collect {i+1}', generate_collect_diagram_3h,
+            (access_df.iloc[idx], tle_data, ground_stations, sat_alt_km, plots_dir / f'slide_postcollect_{i+1}.png'),
+            {}
+        ))
 
-    print("Generating Slide 13: Downlink Delay Summary...")
-    generate_downlink_delay_summary_plot(excel_path, plots_dir / 'slide_downlink_delay_summary.png')
-
-    print("Generating Slides 14-16: Pre-Collect (Uplink-to-Collect)...")
+    # Add pre-collect tasks
     for i, idx in enumerate(random_indices):
-        generate_pre_collect_diagram(access_df.iloc[idx], tle_data, ground_stations, sat_alt_km,
-                                     plots_dir / f'slide_precollect_{i+1}.png')
+        plot_tasks.append((
+            f'Pre-Collect {i+1}', generate_pre_collect_diagram,
+            (access_df.iloc[idx], tle_data, ground_stations, sat_alt_km, plots_dir / f'slide_precollect_{i+1}.png'),
+            {}
+        ))
 
-    print("Generating Slide 17: Uplink-to-Collect Summary...")
-    generate_uplink_to_collect_summary(access_df, tle_data, ground_stations, sat_alt_km,
-                                       plots_dir / 'slide_uplink_summary.png')
+    # Execute plot generation
+    print(f"\nGenerating {len(plot_tasks)} plots" + (" in parallel..." if args.parallel else "..."))
 
-    print("Generating Slide 18: Ground Station Optimization...")
-    generate_optimization_slide(excel_path, plots_dir / 'slide_optimization.png', config)
+    if args.parallel:
+        # Parallel execution
+        def execute_task(task):
+            name, func, task_args, kwargs = task
+            try:
+                func(*task_args, **kwargs)
+                return (name, True, None)
+            except Exception as e:
+                return (name, False, str(e))
+
+        with ThreadPoolExecutor(max_workers=args.workers) as executor:
+            futures = {executor.submit(execute_task, task): task[0] for task in plot_tasks}
+            completed = 0
+            for future in as_completed(futures):
+                name, success, error = future.result()
+                completed += 1
+                status = "OK" if success else f"FAILED: {error}"
+                print(f"  [{completed}/{len(plot_tasks)}] {name}: {status}")
+    else:
+        # Sequential execution with progress
+        for i, (name, func, task_args, kwargs) in enumerate(plot_tasks):
+            print(f"  [{i+1}/{len(plot_tasks)}] Generating {name}...")
+            try:
+                func(*task_args, **kwargs)
+            except Exception as e:
+                print(f"    ERROR: {e}")
+
+    # Record timing
+    plot_time = time.time() - start_time
+    runtime_stats['processing_time'] = f"{plot_time:.1f} s"
 
     # Build presentation
     print("\nBuilding PowerPoint presentation...")
     pptx_path = results_dir / config.ppt_filename
     build_presentation(plots_dir, config, pptx_path, tle_data=tle_data, targets_gdf=targets_gdf, runtime_stats=runtime_stats)
 
-    print("\nDone!")
+    total_time = time.time() - start_time
+    print(f"\nDone! Total time: {total_time:.1f}s")
 
 
 if __name__ == '__main__':

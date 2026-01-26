@@ -18,62 +18,18 @@ from skyfield.api import load, EarthSatellite, wgs84
 
 from .orbits import TLEData
 from .config import GroundStationConfig, ImagingModeConfig, AnalysisConfig
+from .constants import EARTH_RADIUS_KM
+from .utils import haversine_distance_km, calculate_coverage_radius_km
 
 
 def calculate_ground_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """
-    Calculate great circle distance between two points using Haversine formula.
-
-    Parameters
-    ----------
-    lat1, lon1 : float
-        First point coordinates in degrees.
-    lat2, lon2 : float
-        Second point coordinates in degrees.
-
-    Returns
-    -------
-    float
-        Distance in kilometers.
-    """
-    R = 6371.0  # Earth radius in km
-
-    lat1_rad = np.radians(lat1)
-    lat2_rad = np.radians(lat2)
-    dlat = np.radians(lat2 - lat1)
-    dlon = np.radians(lon2 - lon1)
-
-    a = np.sin(dlat / 2)**2 + np.cos(lat1_rad) * np.cos(lat2_rad) * np.sin(dlon / 2)**2
-    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
-
-    return R * c
+    """Calculate great circle distance. Delegates to shared utility."""
+    return haversine_distance_km(lat1, lon1, lat2, lon2)
 
 
 def calculate_comm_range_km(min_elevation_deg: float, sat_altitude_km: float) -> float:
-    """
-    Calculate maximum ground range for communication given elevation and altitude.
-
-    Parameters
-    ----------
-    min_elevation_deg : float
-        Minimum elevation angle in degrees.
-    sat_altitude_km : float
-        Satellite altitude in km.
-
-    Returns
-    -------
-    float
-        Maximum ground range in km.
-    """
-    earth_radius_km = 6378.137
-    elevation_rad = np.radians(min_elevation_deg)
-
-    # Central angle calculation
-    central_angle = np.arccos(
-        earth_radius_km * np.cos(elevation_rad) / (earth_radius_km + sat_altitude_km)
-    ) - elevation_rad
-
-    return earth_radius_km * central_angle
+    """Calculate maximum ground range for communication. Delegates to shared utility."""
+    return calculate_coverage_radius_km(sat_altitude_km, min_elevation_deg)
 
 
 def create_communication_cone(
@@ -102,7 +58,7 @@ def create_communication_cone(
         Communication cone polygon in WGS84 coordinates.
     """
     geod = Geod(ellps='WGS84')
-    earth_radius = 6378137  # meters
+    earth_radius = EARTH_RADIUS_KM * 1000  # meters
 
     # Calculate maximum ground range from geometry
     elevation_rad = np.radians(min_elevation_deg)

@@ -14,6 +14,9 @@ import numpy as np
 import pandas as pd
 from skyfield.api import load, EarthSatellite, wgs84
 
+from .constants import EARTH_RADIUS_KM, EARTH_MU_KM3_S2, EARTH_J2
+from .utils import get_orbital_period_minutes as _get_orbital_period_minutes
+
 
 @dataclass
 class TLEData:
@@ -85,13 +88,9 @@ def generate_tle(
     tuple of (str, str)
         The two lines of the TLE.
     """
-    # Constants
-    earth_radius_km = 6378.137
-    earth_mu = 398600.4418  # km^3/s^2
-
     # Calculate semi-major axis and mean motion
-    semi_major_axis = earth_radius_km + altitude_km
-    mean_motion = np.sqrt(earth_mu / semi_major_axis**3) * 86400 / (2 * np.pi)  # revs per day
+    semi_major_axis = EARTH_RADIUS_KM + altitude_km
+    mean_motion = np.sqrt(EARTH_MU_KM3_S2 / semi_major_axis**3) * 86400 / (2 * np.pi)  # revs per day
 
     # Convert epoch to TLE format
     year = epoch.year % 100
@@ -163,10 +162,8 @@ def create_tle_data(
         line1, line2 = generate_tle(epoch, inclination_deg, altitude_km, sat_id, raan_deg, no_drag=no_drag)
 
     # Calculate mean motion from orbital parameters
-    earth_radius_km = 6378.137
-    earth_mu = 398600.4418
-    semi_major_axis = earth_radius_km + altitude_km
-    mean_motion = np.sqrt(earth_mu / semi_major_axis**3) * 86400 / (2 * np.pi)
+    semi_major_axis = EARTH_RADIUS_KM + altitude_km
+    mean_motion = np.sqrt(EARTH_MU_KM3_S2 / semi_major_axis**3) * 86400 / (2 * np.pi)
 
     return TLEData(
         sat_id=sat_id,
@@ -235,7 +232,7 @@ def propagate_orbits(
         lats = subpoint.latitude.degrees
         lons = subpoint.longitude.degrees
         distances = geocentric.distance().km
-        altitudes = distances - 6378.135  # Approximate altitude
+        altitudes = distances - EARTH_RADIUS_KM  # Approximate altitude
 
         # Build records
         for t, lat, lon, alt in zip(times, lats, lons, altitudes):
@@ -361,25 +358,8 @@ def get_satellite_position(
 
 
 def get_orbital_period_minutes(altitude_km: float) -> float:
-    """
-    Calculate orbital period for a circular orbit.
-
-    Parameters
-    ----------
-    altitude_km : float
-        Orbital altitude in kilometers.
-
-    Returns
-    -------
-    float
-        Orbital period in minutes.
-    """
-    earth_radius_km = 6378.137
-    earth_mu = 398600.4418  # km^3/s^2
-
-    semi_major_axis = earth_radius_km + altitude_km
-    period_s = 2 * np.pi * np.sqrt(semi_major_axis**3 / earth_mu)
-    return period_s / 60.0
+    """Calculate orbital period for a circular orbit. Delegates to shared utility."""
+    return _get_orbital_period_minutes(altitude_km)
 
 
 def validate_propagation(
@@ -541,18 +521,14 @@ def calculate_sso_inclination(altitude_km: float) -> float:
     float
         Required inclination in degrees.
     """
-    J2 = 1.08263e-3
-    Re = 6378.137  # km
-    mu = 398600.4418  # km^3/s^2
-
-    a = Re + altitude_km  # Semi-major axis (km)
-    n = np.sqrt(mu / a**3) * 86400  # Mean motion (rad/day)
+    a = EARTH_RADIUS_KM + altitude_km  # Semi-major axis (km)
+    n = np.sqrt(EARTH_MU_KM3_S2 / a**3) * 86400  # Mean motion (rad/day)
 
     # Required precession rate for SSO: 0.9856 deg/day
     omega_dot_required = np.radians(0.9856)  # rad/day
 
     # Solve for cos(i)
-    cos_i = -omega_dot_required / (1.5 * n * J2 * (Re/a)**2)
+    cos_i = -omega_dot_required / (1.5 * n * EARTH_J2 * (EARTH_RADIUS_KM/a)**2)
     cos_i = np.clip(cos_i, -1, 1)
 
     inclination = np.degrees(np.arccos(cos_i))

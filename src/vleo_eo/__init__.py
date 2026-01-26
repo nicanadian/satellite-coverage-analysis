@@ -7,6 +7,21 @@ and data delivery timelines for VLEO electro-optical (EO) constellations.
 
 __version__ = "0.1.0"
 
+# Core utilities and constants
+from .constants import (
+    EARTH_RADIUS_KM,
+    EARTH_MU_KM3_S2,
+    DEFAULT_MIN_ELEVATION_SX_DEG,
+    DEFAULT_MIN_ELEVATION_KA_DEG,
+    SATELLITE_COLORS,
+    PROVIDER_COLORS,
+)
+from .utils import (
+    haversine_distance_km,
+    get_orbital_period_minutes,
+    calculate_coverage_radius_km,
+    find_contact_boundaries,
+)
 from .config import (
     AnalysisConfig,
     SatelliteConfig,
@@ -16,20 +31,21 @@ from .config import (
     load_config,
 )
 from .orbits import (
-    generate_tle,
+    TLEData,
+    create_tle_data,
     propagate_orbits,
     calculate_ground_track,
     ltdn_to_raan,
     calculate_sso_inclination,
 )
 from .coverage import (
-    calculate_look_angle,
+    load_targets,
     calculate_access_windows,
     filter_access_by_swath,
+    validate_coverage,
 )
 from .contacts import (
     create_communication_cone,
-    find_next_contact,
     calculate_contact_windows,
     calculate_downlink_delay,
     calculate_raw_contact_windows,
@@ -52,9 +68,6 @@ from .optimization import (
     run_optimization,
     OptimizationResult,
     optimization_results_to_dataframe,
-    identify_orbital_revolutions,
-    calculate_ttc_contacts_per_revolution,
-    calculate_delivery_times,
 )
 from .comparison import (
     ComparisonResult,
@@ -63,6 +76,5 @@ from .comparison import (
     load_raw_delay_data,
     comparison_to_dataframe,
     generate_comparison_excel,
-    PROVIDER_COLORS,
     get_provider_color,
 )

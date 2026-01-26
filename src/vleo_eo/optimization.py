@@ -10,15 +10,15 @@ Supports both exhaustive and greedy optimization approaches.
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
 from itertools import combinations
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-from skyfield.api import EarthSatellite, load, wgs84
 
-from .config import AnalysisConfig, GroundStationConfig, OptimizationConfig
+from .config import AnalysisConfig, GroundStationConfig
+from .constants import EARTH_RADIUS_KM, EARTH_MU_KM3_S2
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +51,8 @@ def calculate_orbital_period(altitude_km: float) -> float:
     float
         Orbital period in minutes.
     """
-    mu = 3.986004418e14  # Earth's gravitational parameter (m³/s²)
-    r_earth = 6371.0     # Earth's radius (km)
-
-    r = (r_earth + altitude_km) * 1000  # Semi-major axis in meters
-    period_s = 2 * np.pi * np.sqrt(r**3 / mu)
+    semi_major_axis_km = EARTH_RADIUS_KM + altitude_km
+    period_s = 2 * np.pi * np.sqrt(semi_major_axis_km**3 / EARTH_MU_KM3_S2)
     return period_s / 60.0
 
 
